@@ -282,8 +282,6 @@ function pickChineseVoice() {
 
 let ttsToken = 0;
 
-let ttsToken = 0;
-
 function speakWithBrowserTTS(word) {
   if (!('speechSynthesis' in window)) {
     alert('Синтез речи не поддерживается в этом браузере.');
