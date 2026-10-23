@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>汉字 · Админ-панель</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;600;700&family=Noto+Serif:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"><link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<div class="page admin-page" id="appRoot" hidden>
+  <div class="top">
+    <div class="eyebrow">田字格练习 · Админ-панель</div>
+    <div class="account-row">
+      <span class="account-email" id="accountEmail"></span>
+      <a class="ghost-link" href="index.html">← К тренажёру</a>
+      <button class="ghost-link" id="logoutBtn">Выйти</button>
+    </div>
+  </div>
+
+  <div class="card admin-card">
+    <h1 class="admin-title">Пользователи</h1>
+    <div id="usersTableWrap">
+      <table class="users-table" id="usersTable">
+        <thead>
+          <tr>
+            <th>Пользователь</th>
+            <th>Роль</th>
+            <th>Пройдено</th>
+            <th>Ошибок в среднем</th>
+            <th>Частей уроков</th>
+            <th>Последняя активность</th>
+            <th>Подборка</th>
+          </tr>
+        </thead>
+        <tbody id="usersTableBody"></tbody>
+      </table>
+      <div class="admin-empty" id="usersEmpty" hidden>Пока нет ни одного пользователя.</div>
+    </div>
+  </div>
+</div>
+
+<div class="admin-loading" id="adminLoading">Загрузка…</div>
+
+<!-- Редактор индивидуальной подборки иероглифов -->
+<div class="auth-overlay" id="pickerOverlay" hidden>
+  <div class="auth-card picker-card">
+    <h2 id="pickerTitle">Подборка для пользователя</h2>
+    <p class="picker-hint">Отметьте слова, которые должны быть у этого пользователя. Если ничего не выбрано — будет использован общий список по умолчанию.</p>
+    <div class="picker-list" id="pickerList"></div>
+    <div class="auth-error" id="pickerError"></div>
+    <div class="auth-actions picker-actions">
+      <button type="button" class="primary-btn" id="pickerSaveBtn">Сохранить подборку</button>
+      <button type="button" class="ghost-btn" id="pickerResetBtn">Сбросить к общему списку</button>
+      <button type="button" class="ghost-btn" id="pickerCancelBtn">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<script src="supabase-config.js"></script>
+<script src="auth.js"></script>
+<script src="lessons.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

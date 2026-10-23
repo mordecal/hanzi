@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>汉字 · Тренажёр написания иероглифов</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;600;700&family=Noto+Serif:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"><link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<!-- Экран входа/регистрации. Показывается, пока пользователь не залогинен. -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-card">
+    <div class="done-seal">字</div>
+    <h2>Вход в тренажёр</h2>
+    <form id="authForm">
+  	<div class="auth-name-fields" id="nameFields" hidden>
+    	<input type="text" id="authFirstName" placeholder="Имя" autocomplete="given-name" maxlength="50">
+    	<input type="text" id="authLastName" placeholder="Фамилия" autocomplete="family-name" maxlength="50">
+  	</div>
+      	<input type="email" id="authEmail" placeholder="Email" required autocomplete="email">
+      	<input type="password" id="authPassword" placeholder="Пароль" required autocomplete="current-password" minlength="6">
+      <div class="auth-error" id="authError"></div>
+      <div class="auth-actions">
+        <button type="submit" class="primary-btn" id="authSubmitBtn">Войти</button>
+        <button type="button" class="ghost-btn" id="authToggleModeBtn">Ещё нет аккаунта? Зарегистрироваться</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- Запрос имени у тех, кто зарегистрировался до появления этих полей -->
+<div class="auth-overlay" id="nameOverlay" hidden>
+  <div class="auth-card">
+    <div class="done-seal">名</div>
+    <h2>Как вас зовут?</h2>
+    <form id="nameForm">
+      <input type="text" id="nameFirst" placeholder="Имя" required autocomplete="given-name" maxlength="50">
+      <input type="text" id="nameLast" placeholder="Фамилия" required autocomplete="family-name" maxlength="50">
+      <div class="auth-error" id="nameError"></div>
+      <div class="auth-actions">
+        <button type="submit" class="primary-btn" id="nameSubmitBtn">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="page" id="lessonsRoot" hidden>
+  <div class="top">
+    <div class="eyebrow">田字格练习 · Практика иероглифов</div>
+    <div class="account-row">
+      <span class="account-email" id="accountEmailLessons"></span>
+      <a class="ghost-link" id="adminLinkLessons" href="admin.html" hidden>Админ-панель</a>
+      <button class="ghost-link" id="logoutBtnLessons">Выйти</button>
+    </div>
+  </div>
+  <div class="card lessons-card">
+    <h1 class="admin-title">Уроки</h1>
+    <div id="lessonsList"></div>
+  </div>
+</div>
+
+<div class="page" id="appRoot" hidden>
+  <div class="account-row">
+    <span class="account-email" id="accountEmail"></span>
+    <button class="ghost-link" id="backToLessonsBtn" hidden>← К урокам</button>
+    <a class="ghost-link" id="adminLink" href="admin.html" hidden>Админ-панель</a>
+    <button class="ghost-link" id="logoutBtn">Выйти</button>
+  </div>
+
+  <div class="segments" id="progressSegments"></div>
+  <div class="word-counter" id="wordCounter">Слово 1 из 10</div>
+
+  <div class="card">
+    <div class="task-title" id="taskTitle">Напишите иероглиф</div>
+
+    <div class="word-info">
+      <div class="chars-row" id="charsRow"></div>
+      <div class="translation" id="translationDisplay">привет</div>
+      <div class="word-row">
+        <div class="pinyin" id="pinyinDisplay">nǐ hǎo</div>
+        <button class="seal-btn" id="audioBtn" title="Проиграть произношение" aria-label="Проиграть произношение">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="practice-area">
+      <div class="grid-wrap" id="gridWrap">
+        <svg class="tianzige" viewBox="0 0 260 260" preserveAspectRatio="none">
+          <line x1="130" y1="0" x2="130" y2="260"/>
+          <line x1="0" y1="130" x2="260" y2="130"/>
+          <line x1="0" y1="0" x2="260" y2="260"/>
+          <line x1="260" y1="0" x2="0" y2="260"/>
+        </svg>
+        <div class="writer-target" id="writerTarget"></div>
+      </div>
+
+      <div class="attempt-row">
+        <div class="attempt-dots" id="attemptDots">
+          <span class="dot" data-n="1"></span>
+          <span class="dot" data-n="2"></span>
+          <span class="dot" data-n="3"></span>
+        </div>
+        <div class="attempt-label" id="attemptLabel">Смотрите, как пишется иероглиф…</div>
+        <div class="mistakes-label" id="mistakesLabel"></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="ghost-btn" id="replayBtn">Показать ещё раз</button>
+      <button class="primary-btn" id="nextWordBtn" disabled>Следующее слово →</button>
+    </div>
+  </div>
+</div>
+  
+
+<div class="done-overlay" id="doneOverlay" hidden>
+  <div class="done-card">
+    <div class="done-seal">學</div>
+    <h2 id="doneTitle">Все слова пройдены!</h2>
+    <p>Вы разобрали <span id="doneCount"></span> слов и написали каждый иероглиф трижды.</p>
+    <button class="primary-btn" id="restartBtn">Начать заново</button>
+  </div>
+</div>
+
+<script src="supabase-config.js"></script>
+<script src="auth.js"></script>
+<script src="lessons.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
