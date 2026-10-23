@@ -40,6 +40,9 @@ const el = {
   nameLast: document.getElementById('nameLast'),
   nameError: document.getElementById('nameError'),
   nameSubmitBtn: document.getElementById('nameSubmitBtn'),
+  nameFields: document.getElementById('nameFields'),
+  authFirstName: document.getElementById('authFirstName'),
+  authLastName: document.getElementById('authLastName'),
 };
 
 // Активный список слов: подставляется либо частью урока, либо (если админ
@@ -595,32 +598,37 @@ el.authForm.addEventListener('submit', async (e) => {
   el.authError.textContent = '';
   el.authSubmitBtn.disabled = true;
 
-  const email = el.authEmail.value.trim();
-  const password = el.authPassword.value;
+  try {
+    const email = el.authEmail.value.trim();
+    const password = el.authPassword.value;
 
-  if (authMode === 'signin') {
-    const { error } = await signIn(email, password);
-    if (error) {
-      el.authError.textContent = 'Не удалось войти: ' + error.message;
+    if (authMode === 'signin') {
+      const { error } = await signIn(email, password);
+      if (error) {
+        el.authError.textContent = 'Не удалось войти: ' + error.message;
+      } else {
+        const profile = await getCurrentProfile();
+        await startAppForProfile(profile);
+      }
     } else {
-      const profile = await getCurrentProfile();
-      await startAppForProfile(profile);
+      const firstName = el.authFirstName.value.trim();
+      const lastName = el.authLastName.value.trim();
+      const { data, error } = await signUp(email, password, firstName, lastName);
+      if (error) {
+        el.authError.textContent = 'Не удалось зарегистрироваться: ' + error.message;
+      } else if (!data.session) {
+        el.authError.textContent = 'Проверьте почту и подтвердите регистрацию по ссылке, затем войдите.';
+      } else {
+        const profile = await getCurrentProfile();
+        await startAppForProfile(profile);
+      }
     }
-  } else {
-    const firstName = el.authFirstName.value.trim();
-    const lastName = el.authLastName.value.trim();
-    const { data, error } = await signUp(email, password, firstName, lastName);
-    if (error) {
-      el.authError.textContent = 'Не удалось зарегистрироваться: ' + error.message;
-    } else if (!data.session) {
-      el.authError.textContent = 'Проверьте почту и подтвердите регистрацию по ссылке, затем войдите.';
-    } else {
-      const profile = await getCurrentProfile();
-      await startAppForProfile(profile);
-    }
+  } catch (err) {
+    console.error(err);
+    el.authError.textContent = 'Что-то пошло не так: ' + err.message;
+  } finally {
+    el.authSubmitBtn.disabled = false;
   }
-
-  el.authSubmitBtn.disabled = false;
 });
 
 el.authToggleModeBtn.addEventListener('click', () => {
