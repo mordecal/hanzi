@@ -620,3 +620,17 @@ body{
   font-weight:600;
   letter-spacing:0;
 }
+
+.auth-name-fields{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  width:100%;
+}
+.auth-name-fields[hidden]{display:none;}
+
+/* Все поля формы одной ширины */
+.auth-card input{
+  width:100%;
+  box-sizing:border-box;
+}
