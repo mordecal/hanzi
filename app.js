@@ -253,12 +253,48 @@ el.replayBtn.addEventListener('click', () => {
   });
 });
 
+let ttsVoices = [];
+function loadTtsVoices() {
+  if ('speechSynthesis' in window) ttsVoices = speechSynthesis.getVoices();
+}
+if ('speechSynthesis' in window) {
+  loadTtsVoices();
+  speechSynthesis.addEventListener('voiceschanged', loadTtsVoices);
+}
+
+function pickChineseVoice() {
+  const zh = ttsVoices.filter((v) => /^zh[-_]/i.test(v.lang) || /chinese|中文|普通话/i.test(v.name));
+  return zh.find((v) => /zh[-_]CN/i.test(v.lang)) || zh[0] || null;
+}
+
 function speakWithBrowserTTS(word) {
   if (!('speechSynthesis' in window)) {
     alert('Синтез речи не поддерживается в этом браузере.');
     return;
   }
+  loadTtsVoices();
+  const voice = pickChineseVoice();
+
   const utter = new SpeechSynthesisUtterance(word.hanzi);
+  if (voice) {
+    utter.voice = voice;
+    utter.lang = voice.lang;
+  } else {
+    utter.lang = 'zh-CN';
+    if (ttsVoices.length > 0) {
+      el.attemptLabel.textContent = 'На устройстве нет китайского голоса: установите его в настройках телефона.';
+    }
+  }
+  utter.rate = 0.85;
+
+  // Мобильные браузеры теряют новую фразу, если speak() идёт сразу после cancel()
+  if (speechSynthesis.speaking || speechSynthesis.pending) {
+    speechSynthesis.cancel();
+    setTimeout(() => speechSynthesis.speak(utter), 80);
+  } else {
+    speechSynthesis.speak(utter);
+  }
+}  const utter = new SpeechSynthesisUtterance(word.hanzi);
   utter.lang = 'zh-CN';
   utter.rate = 0.85;
   speechSynthesis.cancel();
@@ -289,7 +325,10 @@ async function resolveAudioSrc(url) {
 }
 
 el.audioBtn.addEventListener('click', async () => {
-  const word = WORDS[state.wordIndex];
+	if ('speechSynthesis' in window && WORDS[state.wordIndex].audio) {
+    	speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+  	}
+  	const word = WORDS[state.wordIndex];
 
   if (!word.audio) {
     speakWithBrowserTTS(word);
