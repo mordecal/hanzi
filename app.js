@@ -257,6 +257,19 @@ let ttsVoices = [];
 function loadTtsVoices() {
   if ('speechSynthesis' in window) ttsVoices = speechSynthesis.getVoices();
 }
+// iOS Safari разрешает синтез речи только после жеста пользователя.
+// Один раз «прогреваем» его на первом касании, дальше speak() работает и после await.
+let ttsUnlocked = false;
+function unlockTts() {
+  if (ttsUnlocked || !('speechSynthesis' in window)) return;
+  const u = new SpeechSynthesisUtterance(' ');
+  u.volume = 0;
+  speechSynthesis.speak(u);
+  ttsUnlocked = true;
+}
+['touchend', 'pointerup', 'click', 'keydown'].forEach((evt) =>
+  document.addEventListener(evt, unlockTts, { once: false, passive: true })
+);
 if ('speechSynthesis' in window) {
   loadTtsVoices();
   speechSynthesis.addEventListener('voiceschanged', loadTtsVoices);
@@ -266,6 +279,8 @@ function pickChineseVoice() {
   const zh = ttsVoices.filter((v) => /^zh[-_]/i.test(v.lang) || /chinese|中文|普通话/i.test(v.name));
   return zh.find((v) => /zh[-_]CN/i.test(v.lang)) || zh[0] || null;
 }
+
+let ttsToken = 0;
 
 let ttsToken = 0;
 
@@ -283,18 +298,18 @@ function speakWithBrowserTTS(word) {
     utter.lang = voice.lang;
   } else {
     utter.lang = 'zh-CN';
-    if (ttsVoices.length > 0) {
-      el.attemptLabel.textContent = 'На устройстве нет китайского голоса: установите его в настройках телефона.';
-    }
   }
   utter.rate = 0.85;
 
-  // Каждый новый вызов отменяет предыдущий отложенный запуск
   const myToken = ++ttsToken;
-  speechSynthesis.cancel();
-  setTimeout(() => {
-    if (myToken === ttsToken) speechSynthesis.speak(utter);
-  }, 80);
+  if (speechSynthesis.speaking || speechSynthesis.pending) {
+    speechSynthesis.cancel();
+    setTimeout(() => {
+      if (myToken === ttsToken) speechSynthesis.speak(utter);
+    }, 80);
+  } else {
+    speechSynthesis.speak(utter); // синхронно, пока действует жест пользователя
+  }
 }
 
 // Публичные ссылки вида disk.yandex.ru/d/... и yadi.sk/... ведут на HTML-страницу,
