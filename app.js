@@ -287,18 +287,13 @@ function speakWithBrowserTTS(word) {
   }
   utter.rate = 0.85;
 
-  // Мобильные браузеры теряют новую фразу, если speak() идёт сразу после cancel()
+   // Мобильные браузеры теряют новую фразу, если speak() идёт сразу после cancel()
   if (speechSynthesis.speaking || speechSynthesis.pending) {
     speechSynthesis.cancel();
     setTimeout(() => speechSynthesis.speak(utter), 80);
   } else {
     speechSynthesis.speak(utter);
   }
-}  const utter = new SpeechSynthesisUtterance(word.hanzi);
-  utter.lang = 'zh-CN';
-  utter.rate = 0.85;
-  speechSynthesis.cancel();
-  speechSynthesis.speak(utter);
 }
 
 // Публичные ссылки вида disk.yandex.ru/d/... и yadi.sk/... ведут на HTML-страницу,
