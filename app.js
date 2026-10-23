@@ -267,6 +267,8 @@ function pickChineseVoice() {
   return zh.find((v) => /zh[-_]CN/i.test(v.lang)) || zh[0] || null;
 }
 
+let ttsToken = 0;
+
 function speakWithBrowserTTS(word) {
   if (!('speechSynthesis' in window)) {
     alert('Синтез речи не поддерживается в этом браузере.');
@@ -287,13 +289,12 @@ function speakWithBrowserTTS(word) {
   }
   utter.rate = 0.85;
 
-   // Мобильные браузеры теряют новую фразу, если speak() идёт сразу после cancel()
-  if (speechSynthesis.speaking || speechSynthesis.pending) {
-    speechSynthesis.cancel();
-    setTimeout(() => speechSynthesis.speak(utter), 80);
-  } else {
-    speechSynthesis.speak(utter);
-  }
+  // Каждый новый вызов отменяет предыдущий отложенный запуск
+  const myToken = ++ttsToken;
+  speechSynthesis.cancel();
+  setTimeout(() => {
+    if (myToken === ttsToken) speechSynthesis.speak(utter);
+  }, 80);
 }
 
 // Публичные ссылки вида disk.yandex.ru/d/... и yadi.sk/... ведут на HTML-страницу,
@@ -320,25 +321,28 @@ async function resolveAudioSrc(url) {
 }
 
 el.audioBtn.addEventListener('click', async () => {
-	if ('speechSynthesis' in window && WORDS[state.wordIndex].audio) {
-    	speechSynthesis.speak(new SpeechSynthesisUtterance(''));
-  	}
-  	const word = WORDS[state.wordIndex];
+  const word = WORDS[state.wordIndex];
 
   if (!word.audio) {
     speakWithBrowserTTS(word);
     return;
   }
 
+  // Запасной синтез должен сработать не больше одного раза за нажатие
+  let fellBack = false;
+  const fallback = () => {
+    if (fellBack) return;
+    fellBack = true;
+    speakWithBrowserTTS(word);
+  };
+
   try {
     const src = await resolveAudioSrc(word.audio);
     const player = new Audio(src);
-    player.addEventListener('error', () => speakWithBrowserTTS(word));
+    player.addEventListener('error', fallback);
     await player.play();
   } catch (e) {
-    // Файл не найден, API недоступен из браузера (CORS) или ссылка истекла —
-    // тихо откатываемся на встроенный синтез речи.
-    speakWithBrowserTTS(word);
+    fallback();
   }
 });
 
