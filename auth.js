@@ -4,9 +4,13 @@ async function signUp(email, password, firstName, lastName) {
   const { data, error } = await sb.auth.signUp({
     email,
     password,
-    options: { data: { first_name: firstName, last_name: lastName } },
+    options: {
+      data: { first_name: firstName, last_name: lastName },
+      emailRedirectTo: window.location.origin + window.location.pathname,
+    },
   });
   return { data, error };
+}
 }
 async function signIn(email, password) {
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
