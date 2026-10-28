@@ -584,18 +584,6 @@ function renderBookLessons(bookId, completedSet) {
     heading.textContent = lesson.title;
     block.appendChild(heading);
 
-    const wordsBox = document.createElement('div');
-    wordsBox.className = 'lesson-words';
-    lesson.words.forEach((w) => {
-      const chip = document.createElement('span');
-      chip.className = 'lesson-word';
-      const hanzi = document.createElement('b');
-      hanzi.textContent = w.hanzi;
-      chip.append(hanzi, ` ${w.pinyin.join(' ')} · ${w.translation}`);
-      wordsBox.appendChild(chip);
-    });
-    block.appendChild(wordsBox);
-
     const row = document.createElement('div');
     row.className = 'lesson-parts-row';
     parts.forEach((partWords, i) => {
