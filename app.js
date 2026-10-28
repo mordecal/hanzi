@@ -44,7 +44,7 @@ const el = {
   authFirstName: document.getElementById('authFirstName'),
   authLastName: document.getElementById('authLastName'),
   backToBooksBtn: document.getElementById('backToBooksBtn'),
-  lessonsTitle: document,getElementById('lessonsTitle'),
+  lessonsTitle: document.getElementById('lessonsTitle'),
 };
 
 // Активный список слов: подставляется либо частью урока, либо (если админ
