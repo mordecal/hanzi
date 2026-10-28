@@ -43,6 +43,8 @@ const el = {
   nameFields: document.getElementById('nameFields'),
   authFirstName: document.getElementById('authFirstName'),
   authLastName: document.getElementById('authLastName'),
+  backToBooksBtn: document.getElementById('backToBooksBtn'),
+  lessonsTitle: document,getElementById('lessonsTitle'),
 };
 
 // Активный список слов: подставляется либо частью урока, либо (если админ
@@ -61,6 +63,7 @@ const state = {
   customMode: false, // true — индивидуальная подборка от админа, без деления на уроки
   lessonId: null,
   partIndex: null,
+  bookId: null,
 };
 let writer = null;
 
@@ -485,6 +488,7 @@ async function startAppForProfile(profile) {
     state.customMode = false;
     el.appRoot.hidden = true;
     el.lessonsRoot.hidden = false;
+    state.bookId = null;
     renderLessonsMenu();
   }
 }
@@ -507,8 +511,69 @@ async function renderLessonsMenu() {
   }
 
   el.lessonsList.innerHTML = '';
+  if (!state.bookId) renderBooks(completedSet);
+  else renderBookLessons(state.bookId, completedSet);
+}
 
-  LESSONS.forEach((lesson) => {
+function lessonsOfBook(bookId) {
+  return LESSONS.filter((l) => (l.book || 'hsk1') === bookId);
+}
+
+// Экран 1: сетка учебников
+function renderBooks(completedSet) {
+  el.lessonsTitle.textContent = 'Учебники';
+  el.backToBooksBtn.hidden = true;
+
+  const grid = document.createElement('div');
+  grid.className = 'books-grid';
+
+  BOOKS.forEach((book) => {
+    const lessons = lessonsOfBook(book.id);
+    const parts = lessons.flatMap((l) => splitLessonIntoParts(l).map((_, i) => `${l.id}::${i}`));
+    const doneParts = parts.filter((key) => completedSet.has(key)).length;
+    const wordsCount = lessons.reduce((n, l) => n + l.words.length, 0);
+    const percent = parts.length ? Math.round((doneParts / parts.length) * 100) : 0;
+
+    const btn = document.createElement('button');
+    btn.className = 'book-card';
+    btn.disabled = lessons.length === 0;
+
+    const title = document.createElement('span');
+    title.className = 'book-title';
+    title.textContent = book.title;
+
+    const meta = document.createElement('span');
+    meta.className = 'book-meta';
+    meta.textContent = lessons.length ? `${lessons.length} ур. · ${wordsCount} слов` : 'скоро';
+
+    btn.append(title, meta);
+
+    if (parts.length) {
+      const bar = document.createElement('span');
+      bar.className = 'book-progress';
+      const fill = document.createElement('span');
+      fill.style.width = percent + '%';
+      bar.appendChild(fill);
+      btn.appendChild(bar);
+    }
+
+    btn.addEventListener('click', () => {
+      state.bookId = book.id;
+      renderLessonsMenu();
+    });
+    grid.appendChild(btn);
+  });
+
+  el.lessonsList.appendChild(grid);
+}
+
+// Экран 2: уроки выбранного учебника со словами
+function renderBookLessons(bookId, completedSet) {
+  const book = BOOKS.find((b) => b.id === bookId);
+  el.lessonsTitle.textContent = book ? book.title : 'Уроки';
+  el.backToBooksBtn.hidden = false;
+
+  lessonsOfBook(bookId).forEach((lesson) => {
     const parts = splitLessonIntoParts(lesson);
 
     const block = document.createElement('div');
@@ -519,9 +584,20 @@ async function renderLessonsMenu() {
     heading.textContent = lesson.title;
     block.appendChild(heading);
 
+    const wordsBox = document.createElement('div');
+    wordsBox.className = 'lesson-words';
+    lesson.words.forEach((w) => {
+      const chip = document.createElement('span');
+      chip.className = 'lesson-word';
+      const hanzi = document.createElement('b');
+      hanzi.textContent = w.hanzi;
+      chip.append(hanzi, ` ${w.pinyin.join(' ')} · ${w.translation}`);
+      wordsBox.appendChild(chip);
+    });
+    block.appendChild(wordsBox);
+
     const row = document.createElement('div');
     row.className = 'lesson-parts-row';
-
     parts.forEach((partWords, i) => {
       const done = completedSet.has(`${lesson.id}::${i}`);
       const btn = document.createElement('button');
@@ -530,11 +606,16 @@ async function renderLessonsMenu() {
       btn.addEventListener('click', () => startLessonPart(lesson.id, i));
       row.appendChild(btn);
     });
-
     block.appendChild(row);
+
     el.lessonsList.appendChild(block);
   });
 }
+
+el.backToBooksBtn.addEventListener('click', () => {
+  state.bookId = null;
+  renderLessonsMenu();
+});
 
 async function startLessonPart(lessonId, partIndex) {
   const lesson = LESSONS.find((l) => l.id === lessonId);

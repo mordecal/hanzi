@@ -634,3 +634,87 @@ body{
   width:100%;
   box-sizing:border-box;
 }
+
+/* ===================== Учебники ===================== */
+#lessonsRoot .ghost-link{margin-bottom:10px;}
+
+.books-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
+  gap:12px;
+}
+.book-card{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:6px;
+  padding:18px 16px;
+  background:var(--paper-deep);
+  border:1px solid rgba(22,24,29,.1);
+  border-radius:18px;
+  cursor:pointer;
+  text-align:left;
+  color:var(--ink);
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.book-card:hover:not(:disabled){
+  transform:translateY(-2px);
+  box-shadow:0 8px 18px -12px rgba(22,24,29,.5);
+}
+.book-card:disabled{opacity:.45;cursor:not-allowed;}
+.book-title{font-size:20px;font-weight:700;}
+.book-meta{font-size:12px;color:var(--ink-soft);}
+.book-progress{
+  display:block;
+  width:100%;
+  height:5px;
+  margin-top:6px;
+  border-radius:3px;
+  background:rgba(22,24,29,.1);
+  overflow:hidden;
+}
+.book-progress span{display:block;height:100%;background:var(--success);}
+
+.lesson-words{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-bottom:12px;
+}
+.lesson-word{
+  font-size:12px;
+  color:var(--ink-soft);
+  background:rgba(22,24,29,.06);
+  padding:4px 10px;
+  border-radius:999px;
+}
+.lesson-word b{
+  font-family:'Noto Serif SC', serif;
+  font-size:14px;
+  color:var(--ink);
+}
+
+/* Группировка в окне подборки */
+.picker-book{
+  position:sticky;
+  top:0;
+  z-index:1;
+  padding:8px 12px;
+  background:var(--paper-card);
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  border-bottom:1px solid rgba(22,24,29,.12);
+}
+.picker-lesson{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 12px;
+  background:rgba(22,24,29,.05);
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+}

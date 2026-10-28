@@ -102,25 +102,62 @@ function escapeHtml(str) {
   return d.innerHTML;
 }
 
+let pickerWords = []; // слова в том порядке, в каком они показаны в окне
+
 function openPicker(userId, userEmail, existingWords) {
   currentPickerUserId = userId;
   el.pickerTitle.textContent = `Подборка для ${userEmail}`;
   el.pickerError.textContent = '';
   el.pickerList.innerHTML = '';
+  pickerWords = [];
 
   const existingHanzi = new Set((existingWords || []).map((w) => w.hanzi));
 
-  DEFAULT_WORDS.forEach((word, i) => {
-    const id = `pick_${i}`;
-    const label = document.createElement('label');
-    label.className = 'picker-item';
-    label.innerHTML = `
-      <input type="checkbox" id="${id}" value="${i}" ${existingHanzi.has(word.hanzi) ? 'checked' : ''}>
-      <span class="picker-hanzi">${word.hanzi}</span>
-      <span class="picker-pinyin">${word.pinyin.join(' ')}</span>
-      <span class="picker-translation">${escapeHtml(word.translation)}</span>
-    `;
-    el.pickerList.appendChild(label);
+  BOOKS.forEach((book) => {
+    const lessons = LESSONS.filter((l) => (l.book || 'hsk1') === book.id);
+    if (lessons.length === 0) return;
+
+    const bookHead = document.createElement('div');
+    bookHead.className = 'picker-book';
+    bookHead.textContent = book.title;
+    el.pickerList.appendChild(bookHead);
+
+    lessons.forEach((lesson) => {
+      // Заголовок урока с флажком «выбрать все»
+      const lessonHead = document.createElement('label');
+      lessonHead.className = 'picker-lesson';
+      const allBox = document.createElement('input');
+      allBox.type = 'checkbox';
+      const lessonName = document.createElement('span');
+      lessonName.textContent = `${lesson.title} · выбрать все`;
+      lessonHead.append(allBox, lessonName);
+      el.pickerList.appendChild(lessonHead);
+
+      const boxes = [];
+      lesson.words.forEach((word) => {
+        const idx = pickerWords.push(word) - 1;
+        const label = document.createElement('label');
+        label.className = 'picker-item';
+        label.innerHTML = `
+          <input type="checkbox" class="picker-word-cb" value="${idx}" ${existingHanzi.has(word.hanzi) ? 'checked' : ''}>
+          <span class="picker-hanzi">${word.hanzi}</span>
+          <span class="picker-pinyin">${word.pinyin.join(' ')}</span>
+          <span class="picker-translation">${escapeHtml(word.translation)}</span>
+        `;
+        el.pickerList.appendChild(label);
+
+        const box = label.querySelector('input');
+        boxes.push(box);
+        box.addEventListener('change', () => {
+          allBox.checked = boxes.every((b) => b.checked);
+        });
+      });
+
+      allBox.checked = boxes.every((b) => b.checked);
+      allBox.addEventListener('change', () => {
+        boxes.forEach((b) => (b.checked = allBox.checked));
+      });
+    });
   });
 
   el.pickerOverlay.hidden = false;
@@ -135,9 +172,12 @@ el.pickerCancelBtn.addEventListener('click', closePicker);
 
 el.pickerSaveBtn.addEventListener('click', async () => {
   if (!currentPickerUserId) return;
-  const checked = Array.from(el.pickerList.querySelectorAll('input[type=checkbox]:checked')).map((cb) => DEFAULT_WORDS[Number(cb.value)]);
-
-  if (checked.length === 0) {
+      const seen = new Set();
+  const checked = Array.from(el.pickerList.querySelectorAll('.picker-word-cb:checked'))
+    .map((cb) => pickerWords[Number(cb.value)])
+    .filter((w) => !seen.has(w.hanzi) && seen.add(w.hanzi)); // одно слово из разных уроков берём один раз
+    
+    if (checked.length === 0) {
     el.pickerError.textContent = 'Выберите хотя бы одно слово (или используйте «Сбросить к общему списку»).';
     return;
   }
