@@ -761,3 +761,6 @@ body{
 .picker-item[hidden],
 .picker-lesson-group[hidden],
 .picker-book-group[hidden]{display:none;}
+
+/* Озвучка временно отключена: чтобы вернуть, удалите это правило */
+#audioBtn{display:none;}
