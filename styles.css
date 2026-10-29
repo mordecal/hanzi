@@ -764,3 +764,12 @@ body{
 
 /* Озвучка временно отключена: чтобы вернуть, удалите это правило */
 #audioBtn{display:none;}
+
+:root{
+  --paper:#EFE9DB;
+  --paper-deep:#F7F3E8;
+  --paper-card:#E9E2D0;
+  --ink:#2B2824;
+  --ink-soft:#5A544A;
+  --ink-faint:#857E71;
+}
