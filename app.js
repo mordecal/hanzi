@@ -79,7 +79,7 @@ const WRITER_OPTS = {
   delayBetweenStrokes: 220,
   strokeColor: '#16181D',
   radicalColor: '#16181D',
-  outlineColor: '#B1AFB3',
+  outlineColor: '#A9A395',
   drawingColor: '#16181D',
   highlightColor: '#6B7A99',
 };
