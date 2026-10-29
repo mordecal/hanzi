@@ -722,3 +722,29 @@ body{
 .done-actions{
   display:flex;gap:10px;justify-content:center;flex-wrap:wrap;
 }
+
+/* Окно подборки: флажки не растягиваются, столбцы выровнены сеткой */
+.auth-card input[type="checkbox"]{
+  width:18px;
+  height:18px;
+  flex:0 0 18px;
+  padding:0;
+  margin:0;
+}
+
+.picker-card{max-width:520px;}
+
+.picker-item{
+  display:grid;
+  grid-template-columns:20px 110px 120px 1fr;
+  align-items:center;
+  column-gap:10px;
+}
+.picker-hanzi{width:auto;white-space:nowrap;}
+.picker-pinyin{width:auto;}
+.picker-translation{text-align:left;}
+
+@media (max-width:480px){
+  .picker-card{padding:28px 16px;}
+  .picker-item{grid-template-columns:20px 84px 90px 1fr;}
+}

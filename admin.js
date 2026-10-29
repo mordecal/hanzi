@@ -172,40 +172,38 @@ el.pickerCancelBtn.addEventListener('click', closePicker);
 
 el.pickerSaveBtn.addEventListener('click', async () => {
   if (!currentPickerUserId) return;
-      const seen = new Set();
+
+  const seen = new Set();
   const checked = Array.from(el.pickerList.querySelectorAll('.picker-word-cb:checked'))
     .map((cb) => pickerWords[Number(cb.value)])
-    .filter((w) => !seen.has(w.hanzi) && seen.add(w.hanzi)); // одно слово из разных уроков берём один раз
-    
-    if (checked.length === 0) {
-    el.pickerError.textContent = 'Выберите хотя бы одно слово (или используйте «Сбросить к общему списку»).';
-    return;
-  }
+    .filter((w) => !seen.has(w.hanzi) && seen.add(w.hanzi));
 
-  const { error } = await sb.from('custom_word_lists').upsert({
-    user_id: currentPickerUserId,
-    words: checked,
-    updated_at: new Date().toISOString(),
-  });
-
-  if (error) {
-    el.pickerError.textContent = 'Не удалось сохранить: ' + error.message;
-    return;
+  if (checked.length === 0) {
+    // Ничего не выбрано: убираем подборку, у ученика снова общий список
+    const { error } = await sb.from('custom_word_lists').delete().eq('user_id', currentPickerUserId);
+    if (error) {
+      el.pickerError.textContent = 'Не удалось сбросить: ' + error.message;
+      return;
+    }
+  } else {
+    const { error } = await sb.from('custom_word_lists').upsert({
+      user_id: currentPickerUserId,
+      words: checked,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) {
+      el.pickerError.textContent = 'Не удалось сохранить: ' + error.message;
+      return;
+    }
   }
 
   closePicker();
   loadUsers();
 });
 
-el.pickerResetBtn.addEventListener('click', async () => {
-  if (!currentPickerUserId) return;
-  const { error } = await sb.from('custom_word_lists').delete().eq('user_id', currentPickerUserId);
-  if (error) {
-    el.pickerError.textContent = 'Не удалось сбросить: ' + error.message;
-    return;
-  }
-  closePicker();
-  loadUsers();
+el.pickerResetBtn.addEventListener('click', () => {
+  el.pickerList.querySelectorAll('input[type=checkbox]').forEach((cb) => (cb.checked = false));
+  el.pickerError.textContent = '';
 });
 
 el.logoutBtn.addEventListener('click', async () => {
