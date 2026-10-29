@@ -50,7 +50,9 @@
   <div class="auth-card picker-card">
     <h2 id="pickerTitle">Подборка для пользователя</h2>
     <p class="picker-hint">Отметьте слова для этого ученика. Если снять все флажки и нажать «Сохранить», у него будет общий список (учебники HSK).</p>
+    <input type="search" id="pickerSearch" class="picker-search" placeholder="Поиск: иероглиф, пиньинь или перевод" autocomplete="off">
     <div class="picker-list" id="pickerList"></div>
+    <div class="picker-no-results" id="pickerNoResults" hidden>Ничего не найдено</div>
     <div class="auth-error" id="pickerError"></div>
     <div class="auth-actions picker-actions">
       <button type="button" class="primary-btn" id="pickerSaveBtn">Сохранить подборку</button>

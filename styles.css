@@ -748,3 +748,16 @@ body{
   .picker-card{padding:28px 16px;}
   .picker-item{grid-template-columns:20px 84px 90px 1fr;}
 }
+
+/* Поиск в окне подборки */
+.picker-search{margin-bottom:10px;}
+.picker-no-results{
+  text-align:center;
+  color:var(--ink-faint);
+  font-size:13px;
+  padding:14px 0 4px;
+}
+.picker-no-results[hidden],
+.picker-item[hidden],
+.picker-lesson-group[hidden],
+.picker-book-group[hidden]{display:none;}

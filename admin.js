@@ -12,6 +12,8 @@ const el = {
   pickerSaveBtn: document.getElementById('pickerSaveBtn'),
   pickerResetBtn: document.getElementById('pickerResetBtn'),
   pickerCancelBtn: document.getElementById('pickerCancelBtn'),
+  pickerSearch: document.getElementById('pickerSearch'),
+  pickerNoResults: document.getElementById('pickerNoResults'),
 };
 
 let currentPickerUserId = null;
@@ -104,11 +106,46 @@ function escapeHtml(str) {
 
 let pickerWords = []; // слова в том порядке, в каком они показаны в окне
 
+let pickerWords = []; // слова в том порядке, в каком они показаны в окне
+
+function plainPinyin(s) {
+  // убираем тоны: nǐ → ni, lǜ → lu
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function filterPicker() {
+  const tokens = el.pickerSearch.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  let totalVisible = 0;
+
+  el.pickerList.querySelectorAll('.picker-book-group').forEach((bookGroup) => {
+    let bookVisible = 0;
+    bookGroup.querySelectorAll('.picker-lesson-group').forEach((lessonGroup) => {
+      let lessonVisible = 0;
+      lessonGroup.querySelectorAll('.picker-item').forEach((item) => {
+        const match = tokens.every(
+          (t) => item.dataset.raw.includes(t) || item.dataset.plain.includes(t.replace(/v/g, 'u'))
+        );
+        item.hidden = !match;
+        if (match) lessonVisible++;
+      });
+      lessonGroup.hidden = lessonVisible === 0;
+      bookVisible += lessonVisible;
+    });
+    bookGroup.hidden = bookVisible === 0;
+    totalVisible += bookVisible;
+  });
+
+  el.pickerNoResults.hidden = totalVisible > 0;
+}
+
+el.pickerSearch.addEventListener('input', filterPicker);
+
 function openPicker(userId, userEmail, existingWords) {
   currentPickerUserId = userId;
   el.pickerTitle.textContent = `Подборка для ${userEmail}`;
   el.pickerError.textContent = '';
   el.pickerList.innerHTML = '';
+  el.pickerSearch.value = '';
   pickerWords = [];
 
   const existingHanzi = new Set((existingWords || []).map((w) => w.hanzi));
@@ -117,12 +154,18 @@ function openPicker(userId, userEmail, existingWords) {
     const lessons = LESSONS.filter((l) => (l.book || 'hsk1') === book.id);
     if (lessons.length === 0) return;
 
+    const bookGroup = document.createElement('div');
+    bookGroup.className = 'picker-book-group';
+
     const bookHead = document.createElement('div');
     bookHead.className = 'picker-book';
     bookHead.textContent = book.title;
-    el.pickerList.appendChild(bookHead);
+    bookGroup.appendChild(bookHead);
 
     lessons.forEach((lesson) => {
+      const lessonGroup = document.createElement('div');
+      lessonGroup.className = 'picker-lesson-group';
+
       // Заголовок урока с флажком «выбрать все»
       const lessonHead = document.createElement('label');
       lessonHead.className = 'picker-lesson';
@@ -131,20 +174,23 @@ function openPicker(userId, userEmail, existingWords) {
       const lessonName = document.createElement('span');
       lessonName.textContent = `${lesson.title} · выбрать все`;
       lessonHead.append(allBox, lessonName);
-      el.pickerList.appendChild(lessonHead);
+      lessonGroup.appendChild(lessonHead);
 
       const boxes = [];
       lesson.words.forEach((word) => {
         const idx = pickerWords.push(word) - 1;
+        const pinyin = word.pinyin.join(' ');
         const label = document.createElement('label');
         label.className = 'picker-item';
+        label.dataset.raw = `${word.hanzi} ${pinyin} ${word.translation}`.toLowerCase();
+        label.dataset.plain = plainPinyin(pinyin);
         label.innerHTML = `
           <input type="checkbox" class="picker-word-cb" value="${idx}" ${existingHanzi.has(word.hanzi) ? 'checked' : ''}>
           <span class="picker-hanzi">${word.hanzi}</span>
-          <span class="picker-pinyin">${word.pinyin.join(' ')}</span>
+          <span class="picker-pinyin">${pinyin}</span>
           <span class="picker-translation">${escapeHtml(word.translation)}</span>
         `;
-        el.pickerList.appendChild(label);
+        lessonGroup.appendChild(label);
 
         const box = label.querySelector('input');
         boxes.push(box);
@@ -154,12 +200,20 @@ function openPicker(userId, userEmail, existingWords) {
       });
 
       allBox.checked = boxes.every((b) => b.checked);
+      // «Выбрать все» действует только на видимые (найденные) слова урока
       allBox.addEventListener('change', () => {
-        boxes.forEach((b) => (b.checked = allBox.checked));
+        boxes.forEach((b) => {
+          if (!b.closest('.picker-item').hidden) b.checked = allBox.checked;
+        });
       });
+
+      bookGroup.appendChild(lessonGroup);
     });
+
+    el.pickerList.appendChild(bookGroup);
   });
 
+  filterPicker();
   el.pickerOverlay.hidden = false;
 }
 
