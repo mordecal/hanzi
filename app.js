@@ -45,6 +45,7 @@ const el = {
   authLastName: document.getElementById('authLastName'),
   backToBooksBtn: document.getElementById('backToBooksBtn'),
   lessonsTitle: document.getElementById('lessonsTitle'),
+  doneBooksBtn: document.getElementById('doneBooksBtn'),
 };
 
 // Активный список слов: подставляется либо частью урока, либо (если админ
@@ -64,6 +65,7 @@ const state = {
   lessonId: null,
   partIndex: null,
   bookId: null,
+  customWords: null,
 };
 let writer = null;
 
@@ -371,17 +373,26 @@ el.nextWordBtn.addEventListener('click', async () => {
     loadWord(next);
     return;
   }
-
   if (!state.customMode && state.lessonId !== null) {
     await recordPartCompletion(state.lessonId, state.partIndex);
     el.doneTitle.textContent = 'Часть урока пройдена!';
     el.restartBtn.textContent = 'К урокам';
+    el.doneBooksBtn.hidden = true;
   } else {
     el.doneTitle.textContent = 'Все слова пройдены!';
     el.restartBtn.textContent = 'Начать заново';
+    el.doneBooksBtn.hidden = false;
   }
   el.doneCount.textContent = WORDS.length;
   el.doneOverlay.hidden = false;
+});
+
+el.doneBooksBtn.addEventListener('click', () => {
+  el.doneOverlay.hidden = true;
+  el.appRoot.hidden = true;
+  el.lessonsRoot.hidden = false;
+  state.bookId = null;
+  renderLessonsMenu();
 });
 
 el.restartBtn.addEventListener('click', () => {
@@ -458,6 +469,17 @@ function askForName(profile) {
   });
 }
 
+function startCustomList() {
+  state.customMode = true;
+  state.lessonId = null;
+  state.partIndex = null;
+  WORDS = state.customWords;
+  el.lessonsRoot.hidden = true;
+  el.appRoot.hidden = false;
+  el.backToLessonsBtn.hidden = false; // из подборки можно выйти к общему списку
+  loadWord(0);
+}
+
 async function startAppForProfile(profile) {
   state.userId = profile.id;
   el.authOverlay.hidden = true;
@@ -474,16 +496,11 @@ async function startAppForProfile(profile) {
 
   const customWords = await loadCustomWordsForUser(profile.id);
 
+    state.customWords = customWords || null;
+
   if (customWords) {
-    // Админ назначил индивидуальный список — единый плоский список без уроков.
-    state.customMode = true;
-    state.lessonId = null;
-    state.partIndex = null;
-    WORDS = customWords;
-    el.backToLessonsBtn.hidden = true;
-    el.lessonsRoot.hidden = true;
-    el.appRoot.hidden = false;
-    loadWord(0);
+    // Админ назначил подборку — открываем её, но из неё можно перейти к учебникам.
+    startCustomList();
   } else {
     state.customMode = false;
     el.appRoot.hidden = true;
@@ -527,6 +544,14 @@ function renderBooks(completedSet) {
   const grid = document.createElement('div');
   grid.className = 'books-grid';
 
+    if (state.customWords) {
+    const mine = document.createElement('button');
+    mine.className = 'book-card';
+    mine.innerHTML = `<span class="book-title">Моя подборка</span><span class="book-meta">${state.customWords.length} слов</span>`;
+    mine.addEventListener('click', startCustomList);
+    grid.appendChild(mine);
+  }
+  
   BOOKS.forEach((book) => {
     const lessons = lessonsOfBook(book.id);
     const parts = lessons.flatMap((l) => splitLessonIntoParts(l).map((_, i) => `${l.id}::${i}`));
@@ -583,6 +608,18 @@ function renderBookLessons(bookId, completedSet) {
     heading.className = 'lesson-heading';
     heading.textContent = lesson.title;
     block.appendChild(heading);
+
+    const wordsBox = document.createElement('div');
+    wordsBox.className = 'lesson-words';
+    lesson.words.forEach((w) => {
+      const chip = document.createElement('span');
+      chip.className = 'lesson-word';
+      const hanzi = document.createElement('b');
+      hanzi.textContent = w.hanzi;
+      chip.append(hanzi, ` ${w.pinyin.join(' ')} · ${w.translation}`);
+      wordsBox.appendChild(chip);
+    });
+    block.appendChild(wordsBox);
 
     const row = document.createElement('div');
     row.className = 'lesson-parts-row';
@@ -657,6 +694,7 @@ async function recordPartCompletion(lessonId, partIndex) {
 }
 
 el.backToLessonsBtn.addEventListener('click', () => {
+  if (state.customMode) state.bookId = null;
   el.appRoot.hidden = true;
   el.lessonsRoot.hidden = false;
   renderLessonsMenu();
@@ -719,6 +757,11 @@ el.authToggleModeBtn.addEventListener('click', () => {
 });
 
 el.logoutBtnLessons.addEventListener('click', async () => {
+  await signOut();
+  window.location.reload();
+});
+
+el.logoutBtn.addEventListener('click', async () => {
   await signOut();
   window.location.reload();
 });

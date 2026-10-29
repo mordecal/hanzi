@@ -718,3 +718,7 @@ body{
   font-weight:600;
   cursor:pointer;
 }
+
+.done-actions{
+  display:flex;gap:10px;justify-content:center;flex-wrap:wrap;
+}
