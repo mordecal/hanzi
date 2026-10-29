@@ -106,7 +106,6 @@ function escapeHtml(str) {
 
 let pickerWords = []; // слова в том порядке, в каком они показаны в окне
 
-let pickerWords = []; // слова в том порядке, в каком они показаны в окне
 
 function plainPinyin(s) {
   // убираем тоны: nǐ → ni, lǜ → lu
