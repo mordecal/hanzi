@@ -551,7 +551,7 @@ function renderBooks(completedSet) {
     mine.addEventListener('click', startCustomList);
     grid.appendChild(mine);
   }
-  
+
   BOOKS.forEach((book) => {
     const lessons = lessonsOfBook(book.id);
     const parts = lessons.flatMap((l) => splitLessonIntoParts(l).map((_, i) => `${l.id}::${i}`));
@@ -608,6 +608,7 @@ function renderBookLessons(bookId, completedSet) {
     heading.className = 'lesson-heading';
     heading.textContent = lesson.title;
     block.appendChild(heading);
+
 
     const row = document.createElement('div');
     row.className = 'lesson-parts-row';

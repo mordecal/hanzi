@@ -14,6 +14,12 @@ const el = {
   pickerCancelBtn: document.getElementById('pickerCancelBtn'),
   pickerSearch: document.getElementById('pickerSearch'),
   pickerNoResults: document.getElementById('pickerNoResults'),
+  addHanzi: document.getElementById('addHanzi'),
+  addPinyin: document.getElementById('addPinyin'),
+  addTranslation: document.getElementById('addTranslation'),
+  addWordBtn: document.getElementById('addWordBtn'),
+  lookupBtn: document.getElementById('lookupBtn'),
+  addSuggestions: document.getElementById('addSuggestions'),
 };
 
 let currentPickerUserId = null;
@@ -139,15 +145,172 @@ function filterPicker() {
 
 el.pickerSearch.addEventListener('input', filterPicker);
 
+let pickerOwnLessonGroup = null; // контейнер для слов, добавленных вручную
+
+// Строка слова в окне подборки
+function createPickerRow(word, checked) {
+  const idx = pickerWords.push(word) - 1;
+  const pinyin = word.pinyin.join(' ');
+  const label = document.createElement('label');
+  label.className = 'picker-item';
+  label.dataset.raw = `${word.hanzi} ${pinyin} ${word.translation}`.toLowerCase();
+  label.dataset.plain = plainPinyin(pinyin);
+  label.innerHTML = `
+    <input type="checkbox" class="picker-word-cb" value="${idx}" ${checked ? 'checked' : ''}>
+    <span class="picker-hanzi">${escapeHtml(word.hanzi)}</span>
+    <span class="picker-pinyin">${escapeHtml(pinyin)}</span>
+    <span class="picker-translation">${escapeHtml(word.translation)}</span>
+  `;
+  return label;
+}
+
+function clearSuggestions() {
+  el.addSuggestions.innerHTML = '';
+  el.addSuggestions.hidden = true;
+}
+
+// Подставляет пиньинь (локально) и перевод (из интернета) по иероглифам
+async function lookupWord() {
+  const hanzi = el.addHanzi.value.trim();
+  if (!/^[\u4e00-\u9fff]+$/.test(hanzi)) {
+    el.pickerError.textContent = 'В поле «Иероглифы» только китайские символы, без пробелов и знаков.';
+    return;
+  }
+  el.pickerError.textContent = '';
+  clearSuggestions();
+
+  if (window.pinyinPro) {
+    el.addPinyin.value = pinyinPro.pinyin(hanzi, { type: 'array' }).join('');
+  }
+
+  el.lookupBtn.disabled = true;
+  el.lookupBtn.textContent = 'Ищу…';
+  try {
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(hanzi)}&langpair=zh-CN|ru`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (Number(data.responseStatus) !== 200) {
+      throw new Error(data.responseDetails || 'сервис недоступен');
+    }
+
+    const isGood = (s) => s && s !== hanzi && !/[\u4e00-\u9fff]/.test(s) && s.length <= 60;
+    const options = [];
+    const main = ((data.responseData && data.responseData.translatedText) || '').trim();
+    if (isGood(main)) options.push(main);
+    (data.matches || []).forEach((m) => {
+      const t = (m.translation || '').trim();
+      if (isGood(t) && !options.includes(t)) options.push(t);
+    });
+    if (options.length === 0) throw new Error('перевод не найден');
+
+    el.addTranslation.value = options[0];
+
+    // Остальные варианты показываем кнопками: клик подставляет перевод
+    options.slice(1, 5).forEach((opt) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'picker-suggestion';
+      chip.textContent = opt;
+      chip.addEventListener('click', () => (el.addTranslation.value = opt));
+      el.addSuggestions.appendChild(chip);
+    });
+    el.addSuggestions.hidden = el.addSuggestions.children.length === 0;
+  } catch (e) {
+    el.pickerError.textContent = `Перевод не найден автоматически (${e.message}). Впишите его вручную.`;
+  } finally {
+    el.lookupBtn.disabled = false;
+    el.lookupBtn.textContent = 'Найти';
+  }
+}
+
+function addCustomWord() {
+  const hanzi = el.addHanzi.value.trim();
+  const pinyin = el.addPinyin.value.trim().replace(/\s+/g, ' ');
+  const translation = el.addTranslation.value.trim();
+
+  if (!/^[\u4e00-\u9fff]+$/.test(hanzi)) {
+    el.pickerError.textContent = 'В поле «Иероглифы» только китайские символы, без пробелов и знаков.';
+    return;
+  }
+  // Поля пустые — сначала подставляем данные, чтобы вы могли их проверить
+  if (!pinyin || !translation) {
+    lookupWord();
+    return;
+  }
+
+  // Такое слово уже есть в списке — просто отмечаем его
+  if (pickerWords.some((w) => w.hanzi === hanzi)) {
+    el.pickerSearch.value = '';
+    filterPicker();
+    el.pickerList.querySelectorAll('.picker-word-cb').forEach((cb) => {
+      if (pickerWords[Number(cb.value)].hanzi === hanzi && !cb.checked) {
+        cb.checked = true;
+        cb.dispatchEvent(new Event('change'));
+      }
+    });
+    el.pickerError.textContent = 'Такое слово уже есть в списке, оно отмечено.';
+    return;
+  }
+
+  el.pickerError.textContent = '';
+  el.pickerSearch.value = '';
+  pickerOwnLessonGroup.appendChild(createPickerRow({ hanzi, pinyin: [pinyin], translation }, true));
+  filterPicker();
+  el.pickerList.scrollTop = 0;
+
+  el.addHanzi.value = '';
+  el.addPinyin.value = '';
+  el.addTranslation.value = '';
+  clearSuggestions();
+  el.addHanzi.focus();
+}
+
+el.addWordBtn.addEventListener('click', addCustomWord);
+el.lookupBtn.addEventListener('click', lookupWord);
+el.addHanzi.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    lookupWord();
+  }
+});
+[el.addPinyin, el.addTranslation].forEach((input) =>
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addCustomWord();
+    }
+  })
+);
+
 function openPicker(userId, userEmail, existingWords) {
   currentPickerUserId = userId;
   el.pickerTitle.textContent = `Подборка для ${userEmail}`;
   el.pickerError.textContent = '';
   el.pickerList.innerHTML = '';
   el.pickerSearch.value = '';
+  el.addHanzi.value = '';
+  el.addPinyin.value = '';
+  el.addTranslation.value = '';
+  clearSuggestions();
   pickerWords = [];
 
   const existingHanzi = new Set((existingWords || []).map((w) => w.hanzi));
+  const knownHanzi = new Set(LESSONS.flatMap((l) => l.words.map((w) => w.hanzi)));
+
+  // Группа «Свои слова»: добавленные вручную (и сохранённые ранее)
+  const ownGroup = document.createElement('div');
+  ownGroup.className = 'picker-book-group';
+  const ownHead = document.createElement('div');
+  ownHead.className = 'picker-book';
+  ownHead.textContent = 'Свои слова';
+  pickerOwnLessonGroup = document.createElement('div');
+  pickerOwnLessonGroup.className = 'picker-lesson-group';
+  ownGroup.append(ownHead, pickerOwnLessonGroup);
+  el.pickerList.appendChild(ownGroup);
+
+  (existingWords || [])
+    .filter((w) => !knownHanzi.has(w.hanzi))
+    .forEach((w) => pickerOwnLessonGroup.appendChild(createPickerRow(w, true)));
 
   BOOKS.forEach((book) => {
     const lessons = LESSONS.filter((l) => (l.book || 'hsk1') === book.id);
@@ -165,7 +328,6 @@ function openPicker(userId, userEmail, existingWords) {
       const lessonGroup = document.createElement('div');
       lessonGroup.className = 'picker-lesson-group';
 
-      // Заголовок урока с флажком «выбрать все»
       const lessonHead = document.createElement('label');
       lessonHead.className = 'picker-lesson';
       const allBox = document.createElement('input');
@@ -177,18 +339,7 @@ function openPicker(userId, userEmail, existingWords) {
 
       const boxes = [];
       lesson.words.forEach((word) => {
-        const idx = pickerWords.push(word) - 1;
-        const pinyin = word.pinyin.join(' ');
-        const label = document.createElement('label');
-        label.className = 'picker-item';
-        label.dataset.raw = `${word.hanzi} ${pinyin} ${word.translation}`.toLowerCase();
-        label.dataset.plain = plainPinyin(pinyin);
-        label.innerHTML = `
-          <input type="checkbox" class="picker-word-cb" value="${idx}" ${existingHanzi.has(word.hanzi) ? 'checked' : ''}>
-          <span class="picker-hanzi">${word.hanzi}</span>
-          <span class="picker-pinyin">${pinyin}</span>
-          <span class="picker-translation">${escapeHtml(word.translation)}</span>
-        `;
+        const label = createPickerRow(word, existingHanzi.has(word.hanzi));
         lessonGroup.appendChild(label);
 
         const box = label.querySelector('input');
@@ -199,7 +350,6 @@ function openPicker(userId, userEmail, existingWords) {
       });
 
       allBox.checked = boxes.every((b) => b.checked);
-      // «Выбрать все» действует только на видимые (найденные) слова урока
       allBox.addEventListener('change', () => {
         boxes.forEach((b) => {
           if (!b.closest('.picker-item').hidden) b.checked = allBox.checked;
