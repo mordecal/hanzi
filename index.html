@@ -6,7 +6,9 @@
 <title>汉字 · Тренажёр написания иероглифов</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;600;700&family=Noto+Serif:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"><link rel="stylesheet" href="styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;600;700&family=Noto+Serif:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=20261113">
+<link rel="icon" href="data:,">
 <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
@@ -18,12 +20,13 @@
     <div class="done-seal">字</div>
     <h2>Вход в тренажёр</h2>
     <form id="authForm">
-  	<div class="auth-name-fields" id="nameFields" hidden>
-    	<input type="text" id="authFirstName" placeholder="Имя" autocomplete="given-name" maxlength="50">
-    	<input type="text" id="authLastName" placeholder="Фамилия" autocomplete="family-name" maxlength="50">
-  	</div>
-      	<input type="email" id="authEmail" placeholder="Email" required autocomplete="email">
-      	<input type="password" id="authPassword" placeholder="Пароль" required autocomplete="current-password" minlength="6">
+      <div class="auth-name-fields" id="nameFields" hidden>
+        <input type="text" id="authFirstName" placeholder="Имя" autocomplete="given-name" maxlength="50">
+        <input type="text" id="authLastName" placeholder="Фамилия" autocomplete="family-name" maxlength="50">
+        <input type="text" id="authTeacherCode" placeholder="Код преподавателя (если есть)" autocomplete="off" maxlength="16">
+      </div>
+      <input type="email" id="authEmail" placeholder="Email" required autocomplete="email">
+      <input type="password" id="authPassword" placeholder="Пароль" required autocomplete="current-password" minlength="6">
       <div class="auth-error" id="authError"></div>
       <div class="auth-actions">
         <button type="submit" class="primary-btn" id="authSubmitBtn">Войти</button>
@@ -135,9 +138,9 @@
   </div>
 </div>
 
-<script src="supabase-config.js"></script>
-<script src="auth.js"></script>
-<script src="lessons.js"></script>
-<script src="app.js"></script>
+<script src="supabase-config.js?v=20261113"></script>
+<script src="auth.js?v=20261113"></script>
+<script src="lessons.js?v=20261113"></script>
+<script src="app.js?v=20261113"></script>
 </body>
 </html>

@@ -1,11 +1,11 @@
 // Общие функции авторизации. Подключается после supabase-config.js.
 
-async function signUp(email, password, firstName, lastName) {
+async function signUp(email, password, firstName, lastName, teacherCode) {
   const { data, error } = await sb.auth.signUp({
     email,
     password,
     options: {
-      data: { first_name: firstName, last_name: lastName },
+      data: { first_name: firstName, last_name: lastName, teacher_code: teacherCode || null },
       emailRedirectTo: window.location.origin + window.location.pathname,
     },
   });

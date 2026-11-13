@@ -774,13 +774,13 @@ body{
   --ink-faint:#857E71;
 }
 
-/* Добавление своих слов */
-.picker-add{margin-bottom:10px; font-size: 13px;}
+/* ===================== Добавление слов и преподаватели ===================== */
+.picker-add{margin-bottom:10px;font-size:13px;}
 .picker-add summary{
-  cursor: pointer;
+  cursor:pointer;
   color:var(--seal);
-  font-weight: 600;
-  padding: 4px 0;
+  font-weight:600;
+  padding:4px 0;
 }
 .picker-add-fields{
   display:flex;
@@ -789,7 +789,6 @@ body{
   margin-top:8px;
 }
 .picker-add-fields .ghost-btn{align-self:flex-start;}
-
 .picker-add-row{display:flex;gap:8px;}
 .picker-add-row input{flex:1;min-width:0;}
 .picker-suggestions{display:flex;flex-wrap:wrap;gap:6px;}
@@ -804,3 +803,42 @@ body{
   cursor:pointer;
 }
 .picker-suggestion:hover{border-color:var(--ink);color:var(--ink);}
+.picker-add-book{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:13px;
+  color:var(--ink-soft);
+}
+.picker-add-book select{
+  font-family:inherit;
+  font-size:13px;
+  padding:7px 10px;
+  border:1px solid var(--ink-faint);
+  border-radius:5px;
+  background:var(--paper-deep);
+  color:var(--ink);
+}
+
+/* Пятый столбец в строке слова — кнопка удаления */
+.picker-item{grid-template-columns:20px 110px 120px 1fr auto;}
+@media (max-width:480px){
+  .picker-item{grid-template-columns:20px 84px 90px 1fr auto;}
+}
+.picker-del{
+  border:none;
+  background:none;
+  color:var(--ink-faint);
+  cursor:pointer;
+  font-size:14px;
+  padding:2px 6px;
+}
+.picker-del:hover{color:var(--seal-dark);}
+
+.invite-box{
+  text-align:center;
+  font-family:'JetBrains Mono', monospace;
+  font-size:11px;
+  color:var(--ink-soft);
+  margin-bottom:10px;
+}

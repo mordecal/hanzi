@@ -20,7 +20,18 @@ const el = {
   addWordBtn: document.getElementById('addWordBtn'),
   lookupBtn: document.getElementById('lookupBtn'),
   addSuggestions: document.getElementById('addSuggestions'),
+  addBook: document.getElementById('addBook'),
+  inviteCode: document.getElementById('inviteCode'),
+  copyInviteBtn: document.getElementById('copyInviteBtn'),
 };
+
+// Список учебников в форме добавления слова
+BOOKS.forEach((b) => {
+  const opt = document.createElement('option');
+  opt.value = b.id;
+  opt.textContent = b.title;
+  el.addBook.appendChild(opt);
+});
 
 let currentPickerUserId = null;
 
@@ -145,14 +156,14 @@ function filterPicker() {
 
 el.pickerSearch.addEventListener('input', filterPicker);
 
-let pickerOwnLessonGroup = null; // контейнер для слов, добавленных вручную
+let pickerOwnLessonGroup = null; // «Свои слова»: слова из старых подборок ученика
 
-// Строка слова в окне подборки
 function createPickerRow(word, checked) {
   const idx = pickerWords.push(word) - 1;
   const pinyin = word.pinyin.join(' ');
   const label = document.createElement('label');
   label.className = 'picker-item';
+  label.dataset.hanzi = word.hanzi;
   label.dataset.raw = `${word.hanzi} ${pinyin} ${word.translation}`.toLowerCase();
   label.dataset.plain = plainPinyin(pinyin);
   label.innerHTML = `
@@ -161,7 +172,43 @@ function createPickerRow(word, checked) {
     <span class="picker-pinyin">${escapeHtml(pinyin)}</span>
     <span class="picker-translation">${escapeHtml(word.translation)}</span>
   `;
+  // У слов, добавленных вручную, есть кнопка удаления из учебника
+  if (word.extraId) {
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'picker-del';
+    del.title = 'Удалить слово из учебника';
+    del.textContent = '✕';
+    del.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      deleteExtraWord(word);
+    });
+    label.appendChild(del);
+  }
   return label;
+}
+
+function currentSelection() {
+  return Array.from(el.pickerList.querySelectorAll('.picker-word-cb:checked')).map(
+    (cb) => pickerWords[Number(cb.value)]
+  );
+}
+
+// Находит слово в выбранном учебнике, отмечает его и прокручивает список к нему
+function selectExistingWord(book, hanzi) {
+  el.pickerSearch.value = '';
+  filterPicker();
+  const row = el.pickerList.querySelector(
+    `.picker-book-group[data-book="${book}"] .picker-item[data-hanzi="${hanzi}"]`
+  );
+  if (!row) return;
+  const cb = row.querySelector('input');
+  if (!cb.checked) {
+    cb.checked = true;
+    cb.dispatchEvent(new Event('change'));
+  }
+  row.scrollIntoView({ block: 'center' });
 }
 
 function clearSuggestions() {
@@ -223,46 +270,67 @@ async function lookupWord() {
   }
 }
 
-function addCustomWord() {
+async function addCustomWord() {
   const hanzi = el.addHanzi.value.trim();
   const pinyin = el.addPinyin.value.trim().replace(/\s+/g, ' ');
   const translation = el.addTranslation.value.trim();
+  const book = el.addBook.value;
+  const bookTitle = (BOOKS.find((b) => b.id === book) || {}).title || book;
 
   if (!/^[\u4e00-\u9fff]+$/.test(hanzi)) {
     el.pickerError.textContent = 'В поле «Иероглифы» только китайские символы, без пробелов и знаков.';
     return;
   }
-  // Поля пустые — сначала подставляем данные, чтобы вы могли их проверить
+  // Поля пустые — сначала подставляем данные, чтобы их можно было проверить
   if (!pinyin || !translation) {
     lookupWord();
     return;
   }
 
-  // Такое слово уже есть в списке — просто отмечаем его
-  if (pickerWords.some((w) => w.hanzi === hanzi)) {
-    el.pickerSearch.value = '';
-    filterPicker();
-    el.pickerList.querySelectorAll('.picker-word-cb').forEach((cb) => {
-      if (pickerWords[Number(cb.value)].hanzi === hanzi && !cb.checked) {
-        cb.checked = true;
-        cb.dispatchEvent(new Event('change'));
-      }
-    });
-    el.pickerError.textContent = 'Такое слово уже есть в списке, оно отмечено.';
+  // Слово уже есть в этом учебнике — просто отмечаем его
+  const exists = LESSONS.some(
+    (l) => (l.book || 'hsk1') === book && l.words.some((w) => w.hanzi === hanzi)
+  );
+  if (exists) {
+    selectExistingWord(book, hanzi);
+    el.pickerError.textContent = `Слово ${hanzi} уже есть в ${bookTitle}, оно отмечено.`;
     return;
   }
 
-  el.pickerError.textContent = '';
-  el.pickerSearch.value = '';
-  pickerOwnLessonGroup.appendChild(createPickerRow({ hanzi, pinyin: [pinyin], translation }, true));
-  filterPicker();
-  el.pickerList.scrollTop = 0;
+  el.addWordBtn.disabled = true;
+  const { error } = await sb.from('extra_words').insert({ book, hanzi, pinyin, translation });
+  el.addWordBtn.disabled = false;
+  if (error) {
+    el.pickerError.textContent = 'Не удалось сохранить слово: ' + error.message;
+    return;
+  }
+
+  // Перечитываем учебники и перерисовываем список, сохранив выбор
+  const selected = currentSelection();
+  await loadExtraWords();
+  selected.push({ hanzi, pinyin: [pinyin], translation });
+  renderPicker(selected);
+  selectExistingWord(book, hanzi);
 
   el.addHanzi.value = '';
   el.addPinyin.value = '';
   el.addTranslation.value = '';
   clearSuggestions();
-  el.addHanzi.focus();
+  el.pickerError.textContent = `Слово добавлено в ${bookTitle} («Дополнительные слова») и отмечено в подборке.`;
+}
+
+async function deleteExtraWord(word) {
+  if (!confirm(`Удалить слово «${word.hanzi}» из учебника? Оно пропадёт у всех ваших учеников. В уже сохранённых подборках оно останется.`)) return;
+
+  const { error } = await sb.from('extra_words').delete().eq('id', word.extraId);
+  if (error) {
+    el.pickerError.textContent = 'Не удалось удалить: ' + error.message;
+    return;
+  }
+  const selected = currentSelection().filter((w) => w.extraId !== word.extraId);
+  await loadExtraWords();
+  renderPicker(selected);
+  el.pickerError.textContent = '';
 }
 
 el.addWordBtn.addEventListener('click', addCustomWord);
@@ -282,33 +350,25 @@ el.addHanzi.addEventListener('keydown', (e) => {
   })
 );
 
-function openPicker(userId, userEmail, existingWords) {
-  currentPickerUserId = userId;
-  el.pickerTitle.textContent = `Подборка для ${userEmail}`;
-  el.pickerError.textContent = '';
+function renderPicker(selectedWords) {
   el.pickerList.innerHTML = '';
-  el.pickerSearch.value = '';
-  el.addHanzi.value = '';
-  el.addPinyin.value = '';
-  el.addTranslation.value = '';
-  clearSuggestions();
   pickerWords = [];
 
-  const existingHanzi = new Set((existingWords || []).map((w) => w.hanzi));
+  const existingHanzi = new Set(selectedWords.map((w) => w.hanzi));
   const knownHanzi = new Set(LESSONS.flatMap((l) => l.words.map((w) => w.hanzi)));
 
-  // Группа «Свои слова»: добавленные вручную (и сохранённые ранее)
+  // «Свои слова»: слова из старых подборок, которых нет ни в одном учебнике
   const ownGroup = document.createElement('div');
   ownGroup.className = 'picker-book-group';
   const ownHead = document.createElement('div');
   ownHead.className = 'picker-book';
-  ownHead.textContent = 'Свои слова';
+  ownHead.textContent = 'Свои слова (только у этого ученика)';
   pickerOwnLessonGroup = document.createElement('div');
   pickerOwnLessonGroup.className = 'picker-lesson-group';
   ownGroup.append(ownHead, pickerOwnLessonGroup);
   el.pickerList.appendChild(ownGroup);
 
-  (existingWords || [])
+  selectedWords
     .filter((w) => !knownHanzi.has(w.hanzi))
     .forEach((w) => pickerOwnLessonGroup.appendChild(createPickerRow(w, true)));
 
@@ -318,6 +378,7 @@ function openPicker(userId, userEmail, existingWords) {
 
     const bookGroup = document.createElement('div');
     bookGroup.className = 'picker-book-group';
+    bookGroup.dataset.book = book.id;
 
     const bookHead = document.createElement('div');
     bookHead.className = 'picker-book';
@@ -328,6 +389,7 @@ function openPicker(userId, userEmail, existingWords) {
       const lessonGroup = document.createElement('div');
       lessonGroup.className = 'picker-lesson-group';
 
+      // Заголовок урока с флажком «выбрать все»
       const lessonHead = document.createElement('label');
       lessonHead.className = 'picker-lesson';
       const allBox = document.createElement('input');
@@ -350,6 +412,7 @@ function openPicker(userId, userEmail, existingWords) {
       });
 
       allBox.checked = boxes.every((b) => b.checked);
+      // «Выбрать все» действует только на видимые (найденные) слова урока
       allBox.addEventListener('change', () => {
         boxes.forEach((b) => {
           if (!b.closest('.picker-item').hidden) b.checked = allBox.checked;
@@ -363,6 +426,19 @@ function openPicker(userId, userEmail, existingWords) {
   });
 
   filterPicker();
+}
+
+function openPicker(userId, userEmail, existingWords) {
+  currentPickerUserId = userId;
+  el.pickerTitle.textContent = `Подборка для ${userEmail}`;
+  el.pickerError.textContent = '';
+  el.pickerSearch.value = '';
+  el.addHanzi.value = '';
+  el.addPinyin.value = '';
+  el.addTranslation.value = '';
+  clearSuggestions();
+
+  renderPicker(existingWords || []);
   el.pickerOverlay.hidden = false;
 }
 
@@ -378,7 +454,10 @@ el.pickerSaveBtn.addEventListener('click', async () => {
 
   const seen = new Set();
   const checked = Array.from(el.pickerList.querySelectorAll('.picker-word-cb:checked'))
-    .map((cb) => pickerWords[Number(cb.value)])
+    .map((cb) => {
+      const { extraId, ...word } = pickerWords[Number(cb.value)];
+      return word; // служебное поле extraId в подборку не попадает
+    })
     .filter((w) => !seen.has(w.hanzi) && seen.add(w.hanzi));
 
   if (checked.length === 0) {
@@ -422,5 +501,20 @@ el.logoutBtn.addEventListener('click', async () => {
   el.adminLoading.hidden = true;
   el.appRoot.hidden = false;
 
+  // Код и ссылка для регистрации учеников этого преподавателя
+  el.inviteCode.textContent = profile.invite_code || '—';
+  el.copyInviteBtn.addEventListener('click', async () => {
+    const url = new URL('index.html', window.location.href);
+    url.searchParams.set('t', profile.invite_code);
+    try {
+      await navigator.clipboard.writeText(url.href);
+      el.copyInviteBtn.textContent = 'Скопировано ✓';
+    } catch (e) {
+      window.prompt('Скопируйте ссылку:', url.href);
+    }
+    setTimeout(() => (el.copyInviteBtn.textContent = 'Скопировать ссылку'), 2000);
+  });
+
+  await loadExtraWords();
   loadUsers();
 })();

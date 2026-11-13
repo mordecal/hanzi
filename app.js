@@ -46,6 +46,7 @@ const el = {
   backToBooksBtn: document.getElementById('backToBooksBtn'),
   lessonsTitle: document.getElementById('lessonsTitle'),
   doneBooksBtn: document.getElementById('doneBooksBtn'),
+  authTeacherCode: document.getElementById('authTeacherCode'),
 };
 
 // Активный список слов: подставляется либо частью урока, либо (если админ
@@ -486,6 +487,9 @@ async function startAppForProfile(profile) {
   el.authError.textContent = '';
   el.authForm.reset();
 
+  // Дополнительные слова преподавателя (если есть)
+  await loadExtraWords();
+
   if (!profile.first_name || !profile.last_name) {
     await askForName(profile);
   }
@@ -496,7 +500,7 @@ async function startAppForProfile(profile) {
 
   const customWords = await loadCustomWordsForUser(profile.id);
 
-    state.customWords = customWords || null;
+  state.customWords = customWords || null;
 
   if (customWords) {
     // Админ назначил подборку — открываем её, но из неё можно перейти к учебникам.
@@ -609,7 +613,6 @@ function renderBookLessons(bookId, completedSet) {
     heading.textContent = lesson.title;
     block.appendChild(heading);
 
-
     const row = document.createElement('div');
     row.className = 'lesson-parts-row';
     parts.forEach((partWords, i) => {
@@ -709,7 +712,15 @@ el.authForm.addEventListener('submit', async (e) => {
     } else {
       const firstName = el.authFirstName.value.trim();
       const lastName = el.authLastName.value.trim();
-      const { data, error } = await signUp(email, password, firstName, lastName);
+      const teacherCode = el.authTeacherCode.value.trim().toUpperCase();
+      if (teacherCode) {
+        const { data: codeOk } = await sb.rpc('teacher_exists', { code: teacherCode });
+        if (!codeOk) {
+          el.authError.textContent = 'Неверный код преподавателя. Проверьте его или оставьте поле пустым.';
+          return;
+        }
+      }
+      const { data, error } = await signUp(email, password, firstName, lastName, teacherCode);
       if (error) {
         el.authError.textContent = 'Не удалось зарегистрироваться: ' + error.message;
       } else if (!data.session) {
@@ -761,5 +772,11 @@ el.logoutBtn.addEventListener('click', async () => {
     await startAppForProfile(profile);
   } else {
     showAuthScreen();
+    // Ссылка преподавателя вида index.html?t=КОД открывает регистрацию с готовым кодом
+    const code = new URLSearchParams(window.location.search).get('t');
+    if (code) {
+      el.authToggleModeBtn.click();
+      el.authTeacherCode.value = code.toUpperCase();
+    }
   }
 })();

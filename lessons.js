@@ -1416,3 +1416,36 @@ function shuffleWords(words) {
   }
   return arr;
 }
+
+// Слова, добавленные преподавателем вручную (таблица extra_words).
+// В каждом учебнике они собираются в последний урок «Дополнительные слова».
+// Ученик видит слова своего преподавателя, преподаватель — свои.
+async function loadExtraWords() {
+  // при повторной загрузке сначала убираем прежние дополнительные уроки
+  for (let i = LESSONS.length - 1; i >= 0; i--) {
+    if (LESSONS[i].extra) LESSONS.splice(i, 1);
+  }
+
+  const { data, error } = await sb.from('extra_words').select('*').order('created_at');
+  if (error) {
+    console.error('Не удалось загрузить дополнительные слова:', error.message);
+    return;
+  }
+
+  BOOKS.forEach((book) => {
+    const rows = (data || []).filter((r) => r.book === book.id);
+    if (rows.length === 0) return;
+    LESSONS.push({
+      id: `${book.id}-extra`,
+      book: book.id,
+      extra: true,
+      title: 'Дополнительные слова',
+      words: rows.map((r) => ({
+        hanzi: r.hanzi,
+        pinyin: [r.pinyin],
+        translation: r.translation,
+        extraId: r.id,
+      })),
+    });
+  });
+}

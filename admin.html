@@ -6,7 +6,9 @@
 <title>汉字 · Админ-панель</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;600;700&family=Noto+Serif:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"><link rel="stylesheet" href="styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;600;700&family=Noto+Serif:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=20261113">
+<link rel="icon" href="data:,">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
@@ -18,6 +20,9 @@
       <span class="account-email" id="accountEmail"></span>
       <a class="ghost-link" href="index.html">← К тренажёру</a>
       <button class="ghost-link" id="logoutBtn">Выйти</button>
+    </div>
+    <div class="invite-box">Код для учеников: <b id="inviteCode"></b>
+      <button class="ghost-link" id="copyInviteBtn">Скопировать ссылку</button>
     </div>
   </div>
 
@@ -51,19 +56,22 @@
     <h2 id="pickerTitle">Подборка для пользователя</h2>
     <p class="picker-hint">Отметьте слова для этого ученика. Если снять все флажки и нажать «Сохранить», у него будет общий список (учебники HSK).</p>
     <input type="search" id="pickerSearch" class="picker-search" placeholder="Поиск: иероглиф, пиньинь или перевод" autocomplete="off">
-      <details class="picker-add" id="pickerAdd">
-        <summary>+ Добавить своё слово</summary>
-        <div class="picker-add-fields">
-          <div class="picker-add-row">
-            <input type="text" id="addHanzi" placeholder="Иероглифы, например 你好" maxlength="20" autocomplete="off">
-            <button type="button" class="ghost-btn" id="lookupBtn">Найти</button>
-          </div>
-          <input type="text" id="addPinyin" placeholder="Пиньинь (подставится сам)" maxlength="60" autocomplete="off">
-          <input type="text" id="addTranslation" placeholder="Перевод (подставится сам)" maxlength="100" autocomplete="off">
-          <div class="picker-suggestions" id="addSuggestions" hidden></div>
-          <button type="button" class="ghost-btn" id="addWordBtn">Добавить в подборку</button>
+    <details class="picker-add" id="pickerAdd">
+      <summary>+ Добавить слово в учебник</summary>
+      <div class="picker-add-fields">
+        <div class="picker-add-row">
+          <input type="text" id="addHanzi" placeholder="Иероглифы, например 你好" maxlength="20" autocomplete="off">
+          <button type="button" class="ghost-btn" id="lookupBtn">Найти</button>
         </div>
-      </details>
+        <input type="text" id="addPinyin" placeholder="Пиньинь (подставится сам)" maxlength="60" autocomplete="off">
+        <input type="text" id="addTranslation" placeholder="Перевод (подставится сам)" maxlength="100" autocomplete="off">
+        <div class="picker-suggestions" id="addSuggestions" hidden></div>
+        <label class="picker-add-book">Учебник:
+          <select id="addBook"></select>
+        </label>
+        <button type="button" class="ghost-btn" id="addWordBtn">Добавить в учебник</button>
+      </div>
+    </details>
     <div class="picker-list" id="pickerList"></div>
     <div class="picker-no-results" id="pickerNoResults" hidden>Ничего не найдено</div>
     <div class="auth-error" id="pickerError"></div>
@@ -75,10 +83,10 @@
   </div>
 </div>
 
-<script src="supabase-config.js"></script>
-<script src="auth.js"></script>
-<script src="lessons.js"></script>
+<script src="supabase-config.js?v=20261113"></script>
+<script src="auth.js?v=20261113"></script>
+<script src="lessons.js?v=20261113"></script>
 <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.18.2/dist/index.js"></script>
-<script src="admin.js"></script>
+<script src="admin.js?v=20261113"></script>
 </body>
 </html>
