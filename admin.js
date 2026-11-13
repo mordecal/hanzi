@@ -23,6 +23,16 @@ const el = {
   addBook: document.getElementById('addBook'),
   inviteCode: document.getElementById('inviteCode'),
   copyInviteBtn: document.getElementById('copyInviteBtn'),
+  statsOverlay: document.getElementById('statsOverlay'),
+  statsTitle: document.getElementById('statsTitle'),
+  statsSummary: document.getElementById('statsSummary'),
+  statsSort: document.getElementById('statsSort'),
+  statsSearch: document.getElementById('statsSearch'),
+  statsList: document.getElementById('statsList'),
+  statsError: document.getElementById('statsError'),
+  statsPickBtn: document.getElementById('statsPickBtn'),
+  statsHardBtn: document.getElementById('statsHardBtn'),
+  statsCloseBtn: document.getElementById('statsCloseBtn'),
 };
 
 // Список учебников в форме добавления слова
@@ -34,6 +44,7 @@ BOOKS.forEach((b) => {
 });
 
 let currentPickerUserId = null;
+let customByUserCache = {}; // подборки учеников — нужны статистике, чтобы дополнять их
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -42,11 +53,12 @@ function formatDate(iso) {
 }
 
 async function loadUsers() {
-  const [{ data: profiles, error: profilesError }, { data: progressRows }, { data: customLists }, { data: lessonRows }] = await Promise.all([
+  // Сводка по ученикам считается в базе (функция students_overview): так числа
+  // остаются точными, даже когда записей прогресса больше 1000.
+  const [{ data: profiles, error: profilesError }, { data: overview, error: overviewError }, { data: customLists }] = await Promise.all([
     sb.from('profiles').select('*').order('created_at'),
-    sb.from('progress').select('user_id, mistakes, completed_at'),
+    sb.rpc('students_overview'),
     sb.from('custom_word_lists').select('user_id, words'),
-    sb.from('lesson_progress').select('user_id'),
   ]);
 
   if (profilesError) {
@@ -55,25 +67,26 @@ async function loadUsers() {
     el.usersEmpty.textContent = 'Не удалось загрузить список пользователей.';
     return;
   }
+  if (overviewError) {
+    console.error('Не удалось загрузить сводку (выполнен ли stats.sql?):', overviewError.message);
+  }
 
   const progressByUser = {};
-  (progressRows || []).forEach((r) => {
-    if (!progressByUser[r.user_id]) progressByUser[r.user_id] = { count: 0, mistakesSum: 0, last: null };
-    const p = progressByUser[r.user_id];
-    p.count++;
-    p.mistakesSum += r.mistakes || 0;
-    if (!p.last || r.completed_at > p.last) p.last = r.completed_at;
-  });
-
   const lessonPartsByUser = {};
-  (lessonRows || []).forEach((r) => {
-    lessonPartsByUser[r.user_id] = (lessonPartsByUser[r.user_id] || 0) + 1;
+  (overview || []).forEach((r) => {
+    progressByUser[r.user_id] = {
+      count: Number(r.passes),
+      mistakesSum: Number(r.mistakes_total),
+      last: r.last_at,
+    };
+    lessonPartsByUser[r.user_id] = Number(r.lesson_parts);
   });
 
   const customByUser = {};
   (customLists || []).forEach((c) => {
     customByUser[c.user_id] = c.words;
   });
+  customByUserCache = customByUser;
 
   renderUsersTable(profiles || [], progressByUser, customByUser, lessonPartsByUser);
 }
@@ -103,7 +116,10 @@ function renderUsersTable(profiles, progressByUser, customByUser, lessonPartsByU
       <td>${avgMistakes}</td>
       <td>${hasCustom ? '—' : partsDone}</td>
       <td>${formatDate(p.last)}</td>
-      <td><button class="ghost-btn picker-open-btn" data-user-id="${profile.id}" data-user-email="${escapeHtml(displayName)}">${hasCustom ? 'Изменить' : 'Назначить'}</button></td>
+      <td class="actions-cell">
+        <button class="ghost-btn stats-open-btn" data-user-id="${profile.id}" data-user-name="${escapeHtml(displayName)}">Статистика</button>
+        <button class="ghost-btn picker-open-btn" data-user-id="${profile.id}" data-user-email="${escapeHtml(displayName)}">${hasCustom ? 'Изменить' : 'Назначить'}</button>
+      </td>
     `;
     el.usersTableBody.appendChild(tr);
   });
@@ -112,6 +128,10 @@ function renderUsersTable(profiles, progressByUser, customByUser, lessonPartsByU
     btn.addEventListener('click', () => {
       openPicker(btn.dataset.userId, btn.dataset.userEmail, customByUser[btn.dataset.userId] || null);
     });
+  });
+
+  el.usersTableBody.querySelectorAll('.stats-open-btn').forEach((btn) => {
+    btn.addEventListener('click', () => openStats(btn.dataset.userId, btn.dataset.userName));
   });
 }
 
@@ -486,6 +506,198 @@ el.pickerSaveBtn.addEventListener('click', async () => {
 el.pickerResetBtn.addEventListener('click', () => {
   el.pickerList.querySelectorAll('input[type=checkbox]').forEach((cb) => (cb.checked = false));
   el.pickerError.textContent = '';
+});
+
+// ============================================================
+// Подробная статистика по ученику
+// ============================================================
+
+let statsUser = null;      // { id, name }
+let statsRows = [];        // по одной строке на иероглиф
+const statsSelected = new Set(); // отмеченные иероглифы
+
+const STATS_SORTERS = {
+  mistakes: (a, b) => b.mistakes - a.mistakes || b.avg - a.avg,
+  avg: (a, b) => b.avg - a.avg || b.passes - a.passes,
+  passes: (a, b) => b.passes - a.passes || b.mistakes - a.mistakes,
+  recent: (a, b) => new Date(b.last) - new Date(a.last),
+};
+
+async function openStats(userId, name) {
+  statsUser = { id: userId, name };
+  statsRows = [];
+  statsSelected.clear();
+  el.statsTitle.textContent = `Статистика: ${name}`;
+  el.statsError.textContent = '';
+  el.statsSummary.textContent = '';
+  el.statsSearch.value = '';
+  el.statsSort.value = 'mistakes';
+  el.statsList.innerHTML = '<div class="admin-empty">Загрузка…</div>';
+  updateStatsPickLabel();
+  el.statsOverlay.hidden = false;
+
+  const { data, error } = await sb.rpc('student_char_stats', { uid: userId });
+  if (error) {
+    el.statsList.innerHTML = '';
+    el.statsError.textContent = 'Не удалось загрузить статистику: ' + error.message;
+    return;
+  }
+
+  statsRows = (data || []).map((r) => {
+    const passes = Number(r.passes);
+    const mistakes = Number(r.mistakes_total);
+    return {
+      hanzi: r.hanzi,
+      words: r.words || [],
+      passes,
+      mistakes,
+      clean: Number(r.clean_passes),
+      avg: passes ? mistakes / passes : 0,
+      last: r.last_at,
+    };
+  });
+  renderStats();
+}
+
+function updateStatsPickLabel() {
+  el.statsPickBtn.textContent = statsSelected.size
+    ? `Назначить слова с отмеченными (${statsSelected.size})`
+    : 'Назначить слова с отмеченными';
+}
+
+function renderStats() {
+  // Сводка по всем иероглифам ученика
+  if (statsRows.length === 0) {
+    el.statsSummary.textContent = 'Пока нет данных: ученик ещё не прошёл ни одного иероглифа.';
+  } else {
+    const passes = statsRows.reduce((n, r) => n + r.passes, 0);
+    const mistakes = statsRows.reduce((n, r) => n + r.mistakes, 0);
+    const clean = statsRows.reduce((n, r) => n + r.clean, 0);
+    el.statsSummary.textContent =
+      `Иероглифов: ${statsRows.length} · проходов: ${passes} · ошибок: ${mistakes} · ` +
+      `без ошибок: ${Math.round((clean / passes) * 100)}% проходов`;
+  }
+
+  const q = el.statsSearch.value.trim();
+  const rows = statsRows
+    .filter((r) => !q || r.hanzi.includes(q) || r.words.some((w) => w.includes(q)))
+    .sort(STATS_SORTERS[el.statsSort.value] || STATS_SORTERS.mistakes);
+
+  el.statsList.innerHTML = '';
+  if (rows.length === 0) {
+    if (statsRows.length > 0) {
+      el.statsList.innerHTML = '<div class="admin-empty">Ничего не найдено</div>';
+    }
+    return;
+  }
+
+  const table = document.createElement('table');
+  table.className = 'stats-table';
+  table.innerHTML = `
+    <thead><tr>
+      <th></th>
+      <th>Иероглиф</th>
+      <th class="stats-num" title="Сколько раз иероглиф был полностью написан (3 попытки подряд)">Проходов</th>
+      <th class="stats-num" title="Неверных штрихов за все проходы">Ошибок</th>
+      <th class="stats-num" title="Ошибок на один проход">В среднем</th>
+      <th class="stats-num" title="Проходов без единой ошибки">Без ошибок</th>
+    </tr></thead>`;
+  const tbody = document.createElement('tbody');
+
+  rows.forEach((r) => {
+    const tr = document.createElement('tr');
+
+    const tdCb = document.createElement('td');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = statsSelected.has(r.hanzi);
+    cb.addEventListener('change', () => {
+      if (cb.checked) statsSelected.add(r.hanzi);
+      else statsSelected.delete(r.hanzi);
+      updateStatsPickLabel();
+    });
+    tdCb.appendChild(cb);
+
+    const tdHanzi = document.createElement('td');
+    const big = document.createElement('div');
+    big.className = 'stats-hanzi';
+    big.textContent = r.hanzi;
+    const small = document.createElement('div');
+    small.className = 'stats-words';
+    small.textContent = r.words.join(', ');
+    small.title = `Последний раз: ${formatDate(r.last)}`;
+    tdHanzi.append(big, small);
+
+    const num = (text, cls) => {
+      const td = document.createElement('td');
+      td.className = 'stats-num' + (cls ? ' ' + cls : '');
+      td.textContent = text;
+      return td;
+    };
+    const avgCls = r.avg >= 2 ? 'stats-hard' : r.avg >= 1 ? 'stats-mid' : '';
+
+    tr.append(
+      tdCb,
+      tdHanzi,
+      num(r.passes),
+      num(r.mistakes),
+      num(r.avg.toFixed(1), avgCls),
+      num(`${r.clean} из ${r.passes}`)
+    );
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  el.statsList.appendChild(table);
+}
+
+function closeStats() {
+  el.statsOverlay.hidden = true;
+  statsUser = null;
+}
+
+// Слова, в которых встречаются отмеченные иероглифы, добавляем к подборке ученика
+function assignFromStats() {
+  if (!statsUser) return;
+  if (statsSelected.size === 0) {
+    el.statsError.textContent = 'Отметьте иероглифы, по которым нужны слова.';
+    return;
+  }
+
+  const wantedWords = new Set();
+  statsRows
+    .filter((r) => statsSelected.has(r.hanzi))
+    .forEach((r) => r.words.forEach((w) => wantedWords.add(w)));
+
+  const custom = customByUserCache[statsUser.id] || [];
+  const known = new Map();
+  LESSONS.forEach((l) => l.words.forEach((w) => { if (!known.has(w.hanzi)) known.set(w.hanzi, w); }));
+  custom.forEach((w) => { if (!known.has(w.hanzi)) known.set(w.hanzi, w); });
+
+  const merged = new Map(custom.map((w) => [w.hanzi, w])); // уже назначенные остаются
+  const missing = [];
+  wantedWords.forEach((h) => {
+    const w = known.get(h);
+    if (w) merged.set(h, w);
+    else missing.push(h);
+  });
+
+  const { id, name } = statsUser;
+  closeStats();
+  openPicker(id, name, Array.from(merged.values()));
+  if (missing.length) {
+    el.pickerError.textContent = `Этих слов нет в учебниках, они не добавлены: ${missing.join(', ')}`;
+  }
+}
+
+el.statsSort.addEventListener('change', renderStats);
+el.statsSearch.addEventListener('input', renderStats);
+el.statsCloseBtn.addEventListener('click', closeStats);
+el.statsPickBtn.addEventListener('click', assignFromStats);
+el.statsHardBtn.addEventListener('click', () => {
+  statsRows.filter((r) => r.avg >= 1).forEach((r) => statsSelected.add(r.hanzi));
+  updateStatsPickLabel();
+  renderStats();
 });
 
 el.logoutBtn.addEventListener('click', async () => {

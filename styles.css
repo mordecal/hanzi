@@ -842,3 +842,64 @@ body{
   color:var(--ink-soft);
   margin-bottom:10px;
 }
+
+/* ===================== Статистика ученика ===================== */
+.actions-cell{white-space:nowrap;}
+.actions-cell .ghost-btn{padding:7px 12px;margin-right:6px;}
+.actions-cell .ghost-btn:last-child{margin-right:0;}
+
+.stats-card{max-width:640px;text-align:left;}
+.stats-card h2{font-size:18px;}
+.stats-summary{
+  font-size:13px;
+  color:var(--ink-soft);
+  line-height:1.5;
+  margin:-8px 0 14px;
+}
+.stats-controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+.stats-controls select{
+  flex:1;
+  min-width:180px;
+  font-family:inherit;
+  font-size:13px;
+  padding:9px 10px;
+  border:1px solid var(--ink-faint);
+  border-radius:5px;
+  background:var(--paper-deep);
+  color:var(--ink);
+}
+.stats-controls input{width:auto;flex:1;min-width:140px;}
+.stats-list{
+  max-height:340px;
+  overflow:auto;
+  border:1px solid rgba(22,24,29,.12);
+  border-radius:6px;
+  margin-bottom:6px;
+}
+.stats-table{width:100%;border-collapse:collapse;font-size:13px;}
+.stats-table th{
+  position:sticky;
+  top:0;
+  z-index:1;
+  background:var(--paper-card);
+  font-family:'JetBrains Mono', monospace;
+  font-size:10px;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:var(--ink-faint);
+  text-align:left;
+  padding:8px;
+  border-bottom:1px solid rgba(22,24,29,.12);
+  white-space:nowrap;
+}
+.stats-table td{
+  padding:8px;
+  border-bottom:1px solid rgba(22,24,29,.08);
+  vertical-align:middle;
+}
+.stats-table tr:last-child td{border-bottom:none;}
+.stats-table .stats-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.stats-hanzi{font-family:'Noto Serif SC', serif;font-size:22px;line-height:1.2;}
+.stats-words{font-size:11px;color:var(--ink-faint);}
+.stats-hard{color:var(--seal-dark);font-weight:700;}
+.stats-mid{color:#9A6B1F;font-weight:600;}

@@ -38,7 +38,7 @@
             <th>Ошибок в среднем</th>
             <th>Частей уроков</th>
             <th>Последняя активность</th>
-            <th>Подборка</th>
+            <th>Действия</th>
           </tr>
         </thead>
         <tbody id="usersTableBody"></tbody>
@@ -79,6 +79,30 @@
       <button type="button" class="primary-btn" id="pickerSaveBtn">Сохранить подборку</button>
       <button type="button" class="ghost-btn" id="pickerResetBtn">Очистить выбор</button>
       <button type="button" class="ghost-btn" id="pickerCancelBtn">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<!-- Подробная статистика по ученику -->
+<div class="auth-overlay" id="statsOverlay" hidden>
+  <div class="auth-card stats-card">
+    <h2 id="statsTitle">Статистика</h2>
+    <div class="stats-summary" id="statsSummary"></div>
+    <div class="stats-controls">
+      <select id="statsSort">
+        <option value="mistakes">Больше всего ошибок</option>
+        <option value="avg">Больше ошибок за проход</option>
+        <option value="passes">Чаще всего проходил</option>
+        <option value="recent">Проходил недавно</option>
+      </select>
+      <input type="search" id="statsSearch" placeholder="Поиск по иероглифу" autocomplete="off">
+    </div>
+    <div class="stats-list" id="statsList"></div>
+    <div class="auth-error" id="statsError"></div>
+    <div class="auth-actions picker-actions">
+      <button type="button" class="primary-btn" id="statsPickBtn">Назначить слова с отмеченными</button>
+      <button type="button" class="ghost-btn" id="statsHardBtn">Отметить сложные (от 1 ошибки за проход)</button>
+      <button type="button" class="ghost-btn" id="statsCloseBtn">Закрыть</button>
     </div>
   </div>
 </div>
