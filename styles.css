@@ -907,3 +907,17 @@ body{
 /* Главный экран: три раздела */
 .sections-grid{grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));}
 .sections-grid .book-card{min-height:104px;}
+
+/* Окна (вход, подборка, статистика) прокручиваются, если не помещаются на экран.
+   Карточка по центру, когда места хватает, и прижата к верху, когда нет. */
+.auth-overlay{
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  align-items:flex-start;
+}
+.auth-overlay > .auth-card{margin:auto;}
+
+/* Списки внутри окон подстраиваются под высоту экрана */
+.picker-list{max-height:min(320px, 38vh);}
+.stats-list{max-height:min(340px, 42vh);}
