@@ -2,15 +2,34 @@
 // Урок автоматически делится на 2-3 части функцией splitLessonIntoParts —
 // добавлять части вручную не нужно, просто дописывайте слова в урок.
 
-// Учебники. У урока в LESSONS поле book указывает, к какому учебнику он относится.
-// Если поле не указано, урок считается уроком HSK 1.
-const BOOKS = [
-  { id: 'hsk1', title: 'HSK 1' },
-  { id: 'hsk2', title: 'HSK 2' },
-  { id: 'hsk3', title: 'HSK 3' },
-  { id: 'hsk4', title: 'HSK 4' },
-  { id: 'hsk5', title: 'HSK 5' },
+// Разделы главного экрана: старый и новый учебник.
+const SERIES = [
+  { id: 'old', title: 'Старый учебник' },
+  { id: 'new', title: 'Новый учебник' },
 ];
+
+// Книги (уровни) внутри разделов. У урока в LESSONS поле book указывает на id книги.
+// Если у урока поле book не указано, он считается уроком HSK 1.
+// Чтобы добавить книгу нового учебника, раскомментируйте/добавьте строку вида:
+//   { id: 'new1', series: 'new', title: 'Уровень 1' },
+// и затем добавляйте уроки с book: 'new1' и id вида 'new1-lesson-1'.
+const BOOKS = [
+  { id: 'hsk1', series: 'old', title: 'HSK 1' },
+  { id: 'hsk2', series: 'old', title: 'HSK 2' },
+  { id: 'hsk3', series: 'old', title: 'HSK 3' },
+  { id: 'hsk4', series: 'old', title: 'HSK 4' },
+  { id: 'hsk5', series: 'old', title: 'HSK 5' },
+];
+
+function booksOfSeries(seriesId) {
+  return BOOKS.filter((b) => (b.series || 'old') === seriesId);
+}
+
+// Подпись книги с названием раздела: «Старый учебник · HSK 1»
+function bookLabel(book) {
+  const s = SERIES.find((x) => x.id === (book.series || 'old'));
+  return s ? `${s.title} · ${book.title}` : book.title;
+}
 
 const LESSONS = [
   {

@@ -39,7 +39,7 @@ const el = {
 BOOKS.forEach((b) => {
   const opt = document.createElement('option');
   opt.value = b.id;
-  opt.textContent = b.title;
+  opt.textContent = bookLabel(b);
   el.addBook.appendChild(opt);
 });
 
@@ -295,7 +295,8 @@ async function addCustomWord() {
   const pinyin = el.addPinyin.value.trim().replace(/\s+/g, ' ');
   const translation = el.addTranslation.value.trim();
   const book = el.addBook.value;
-  const bookTitle = (BOOKS.find((b) => b.id === book) || {}).title || book;
+  const bookObj = BOOKS.find((b) => b.id === book);
+  const bookTitle = bookObj ? bookLabel(bookObj) : book;
 
   if (!/^[\u4e00-\u9fff]+$/.test(hanzi)) {
     el.pickerError.textContent = 'В поле «Иероглифы» только китайские символы, без пробелов и знаков.';
@@ -402,7 +403,7 @@ function renderPicker(selectedWords) {
 
     const bookHead = document.createElement('div');
     bookHead.className = 'picker-book';
-    bookHead.textContent = book.title;
+    bookHead.textContent = bookLabel(book);
     bookGroup.appendChild(bookHead);
 
     lessons.forEach((lesson) => {

@@ -903,3 +903,7 @@ body{
 .stats-words{font-size:11px;color:var(--ink-faint);}
 .stats-hard{color:var(--seal-dark);font-weight:700;}
 .stats-mid{color:#9A6B1F;font-weight:600;}
+
+/* Главный экран: три раздела */
+.sections-grid{grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));}
+.sections-grid .book-card{min-height:104px;}

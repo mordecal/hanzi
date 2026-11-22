@@ -65,6 +65,7 @@ const state = {
   customMode: false, // true — индивидуальная подборка от админа, без деления на уроки
   lessonId: null,
   partIndex: null,
+  seriesId: null,
   bookId: null,
   customWords: null,
 };
@@ -392,6 +393,7 @@ el.doneBooksBtn.addEventListener('click', () => {
   el.doneOverlay.hidden = true;
   el.appRoot.hidden = true;
   el.lessonsRoot.hidden = false;
+  state.seriesId = null;
   state.bookId = null;
   renderLessonsMenu();
 });
@@ -502,16 +504,13 @@ async function startAppForProfile(profile) {
 
   state.customWords = customWords || null;
 
-  if (customWords) {
-    // Админ назначил подборку — открываем её, но из неё можно перейти к учебникам.
-    startCustomList();
-  } else {
-    state.customMode = false;
-    el.appRoot.hidden = true;
-    el.lessonsRoot.hidden = false;
-    state.bookId = null;
-    renderLessonsMenu();
-  }
+  // Главный экран: «Моя подборка», «Старый учебник», «Новый учебник»
+  state.customMode = false;
+  state.seriesId = null;
+  state.bookId = null;
+  el.appRoot.hidden = true;
+  el.lessonsRoot.hidden = false;
+  renderLessonsMenu();
 }
 
 // ============================================================
@@ -532,7 +531,8 @@ async function renderLessonsMenu() {
   }
 
   el.lessonsList.innerHTML = '';
-  if (!state.bookId) renderBooks(completedSet);
+  if (!state.seriesId) renderSections(completedSet);
+  else if (!state.bookId) renderBooks(state.seriesId, completedSet);
   else renderBookLessons(state.bookId, completedSet);
 }
 
@@ -540,57 +540,96 @@ function lessonsOfBook(bookId) {
   return LESSONS.filter((l) => (l.book || 'hsk1') === bookId);
 }
 
-// Экран 1: сетка учебников
-function renderBooks(completedSet) {
-  el.lessonsTitle.textContent = 'Учебники';
+// Прогресс по набору уроков: сколько частей пройдено
+function progressOf(lessons, completedSet) {
+  const keys = lessons.flatMap((l) => splitLessonIntoParts(l).map((_, i) => `${l.id}::${i}`));
+  const done = keys.filter((k) => completedSet.has(k)).length;
+  return { total: keys.length, done, percent: keys.length ? Math.round((done / keys.length) * 100) : 0 };
+}
+
+// Карточка в сетке: название, подпись, необязательная полоска прогресса
+function makeCard(title, meta, { disabled = false, percent = null, onClick = null } = {}) {
+  const btn = document.createElement('button');
+  btn.className = 'book-card';
+  btn.disabled = disabled;
+
+  const t = document.createElement('span');
+  t.className = 'book-title';
+  t.textContent = title;
+  const m = document.createElement('span');
+  m.className = 'book-meta';
+  m.textContent = meta;
+  btn.append(t, m);
+
+  if (percent !== null) {
+    const bar = document.createElement('span');
+    bar.className = 'book-progress';
+    const fill = document.createElement('span');
+    fill.style.width = percent + '%';
+    bar.appendChild(fill);
+    btn.appendChild(bar);
+  }
+  if (onClick) btn.addEventListener('click', onClick);
+  return btn;
+}
+
+// Экран 0: главный — «Моя подборка», «Старый учебник», «Новый учебник»
+function renderSections(completedSet) {
+  el.lessonsTitle.textContent = 'Разделы';
   el.backToBooksBtn.hidden = true;
+
+  const grid = document.createElement('div');
+  grid.className = 'books-grid sections-grid';
+
+  const customCount = state.customWords ? state.customWords.length : 0;
+  grid.appendChild(
+    makeCard('Моя подборка', customCount ? `${customCount} слов` : 'пока не назначена', {
+      disabled: customCount === 0,
+      onClick: startCustomList,
+    })
+  );
+
+  SERIES.forEach((series) => {
+    const lessons = booksOfSeries(series.id).flatMap((b) => lessonsOfBook(b.id));
+    const wordsCount = lessons.reduce((n, l) => n + l.words.length, 0);
+    grid.appendChild(
+      makeCard(series.title, lessons.length ? `${lessons.length} ур. · ${wordsCount} слов` : 'скоро', {
+        disabled: lessons.length === 0,
+        percent: lessons.length ? progressOf(lessons, completedSet).percent : null,
+        onClick: () => {
+          state.seriesId = series.id;
+          renderLessonsMenu();
+        },
+      })
+    );
+  });
+
+  el.lessonsList.appendChild(grid);
+}
+
+// Экран 1: книги (уровни) выбранного раздела
+function renderBooks(seriesId, completedSet) {
+  const series = SERIES.find((s) => s.id === seriesId);
+  el.lessonsTitle.textContent = series ? series.title : 'Учебники';
+  el.backToBooksBtn.textContent = '← К разделам';
+  el.backToBooksBtn.hidden = false;
 
   const grid = document.createElement('div');
   grid.className = 'books-grid';
 
-    if (state.customWords) {
-    const mine = document.createElement('button');
-    mine.className = 'book-card';
-    mine.innerHTML = `<span class="book-title">Моя подборка</span><span class="book-meta">${state.customWords.length} слов</span>`;
-    mine.addEventListener('click', startCustomList);
-    grid.appendChild(mine);
-  }
-
-  BOOKS.forEach((book) => {
+  booksOfSeries(seriesId).forEach((book) => {
     const lessons = lessonsOfBook(book.id);
-    const parts = lessons.flatMap((l) => splitLessonIntoParts(l).map((_, i) => `${l.id}::${i}`));
-    const doneParts = parts.filter((key) => completedSet.has(key)).length;
     const wordsCount = lessons.reduce((n, l) => n + l.words.length, 0);
-    const percent = parts.length ? Math.round((doneParts / parts.length) * 100) : 0;
-
-    const btn = document.createElement('button');
-    btn.className = 'book-card';
-    btn.disabled = lessons.length === 0;
-
-    const title = document.createElement('span');
-    title.className = 'book-title';
-    title.textContent = book.title;
-
-    const meta = document.createElement('span');
-    meta.className = 'book-meta';
-    meta.textContent = lessons.length ? `${lessons.length} ур. · ${wordsCount} слов` : 'скоро';
-
-    btn.append(title, meta);
-
-    if (parts.length) {
-      const bar = document.createElement('span');
-      bar.className = 'book-progress';
-      const fill = document.createElement('span');
-      fill.style.width = percent + '%';
-      bar.appendChild(fill);
-      btn.appendChild(bar);
-    }
-
-    btn.addEventListener('click', () => {
-      state.bookId = book.id;
-      renderLessonsMenu();
-    });
-    grid.appendChild(btn);
+    grid.appendChild(
+      makeCard(book.title, lessons.length ? `${lessons.length} ур. · ${wordsCount} слов` : 'скоро', {
+        disabled: lessons.length === 0,
+        percent: lessons.length ? progressOf(lessons, completedSet).percent : null,
+        onClick: () => {
+          state.bookId = book.id;
+          renderLessonsMenu();
+        },
+      })
+    );
   });
 
   el.lessonsList.appendChild(grid);
@@ -599,7 +638,9 @@ function renderBooks(completedSet) {
 // Экран 2: уроки выбранного учебника со словами
 function renderBookLessons(bookId, completedSet) {
   const book = BOOKS.find((b) => b.id === bookId);
+  const series = SERIES.find((s) => s.id === state.seriesId);
   el.lessonsTitle.textContent = book ? book.title : 'Уроки';
+  el.backToBooksBtn.textContent = series ? `← ${series.title}` : '← Назад';
   el.backToBooksBtn.hidden = false;
 
   lessonsOfBook(bookId).forEach((lesson) => {
@@ -630,7 +671,9 @@ function renderBookLessons(bookId, completedSet) {
 }
 
 el.backToBooksBtn.addEventListener('click', () => {
-  state.bookId = null;
+  // из уроков — к книгам раздела, из книг — на главный экран
+  if (state.bookId) state.bookId = null;
+  else state.seriesId = null;
   renderLessonsMenu();
 });
 
@@ -686,7 +729,10 @@ async function recordPartCompletion(lessonId, partIndex) {
 }
 
 el.backToLessonsBtn.addEventListener('click', () => {
-  if (state.customMode) state.bookId = null;
+  if (state.customMode) {
+    state.seriesId = null;
+    state.bookId = null;
+  }
   el.appRoot.hidden = true;
   el.lessonsRoot.hidden = false;
   renderLessonsMenu();
