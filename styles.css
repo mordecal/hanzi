@@ -1005,3 +1005,17 @@ body{
   .words-translation{grid-column:2;}
   .words-row .picker-del{grid-column:3;grid-row:1 / span 2;}
 }
+
+/* Атрибут hidden всегда скрывает элемент, что бы ни было задано в display */
+[hidden]{display:none !important;}
+
+/* Вкладки: крупная зона нажатия и без задержки двойного тапа на телефоне */
+.admin-tab{min-height:44px;touch-action:manipulation;}
+
+.build-tag{
+  text-align:center;
+  font-family:'JetBrains Mono', monospace;
+  font-size:10px;
+  color:var(--ink-faint);
+  margin-top:18px;
+}

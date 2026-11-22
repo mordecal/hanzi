@@ -1,3 +1,6 @@
+// Версия сборки: показывается внизу страницы, чтобы видеть, какой файл загрузился
+const ADMIN_BUILD = '20261122b';
+
 const el = {
   appRoot: document.getElementById('appRoot'),
   accountEmail: document.getElementById('accountEmail'),
@@ -23,6 +26,7 @@ const el = {
   addBook: document.getElementById('addBook'),
   inviteCode: document.getElementById('inviteCode'),
   copyInviteBtn: document.getElementById('copyInviteBtn'),
+  buildTag: document.getElementById('buildTag'),
   tabStudents: document.getElementById('tabStudents'),
   tabWords: document.getElementById('tabWords'),
   wordsList: document.getElementById('wordsList'),
@@ -355,10 +359,17 @@ function showTab(name) {
   el.tabWords.hidden = name !== 'words';
   document.querySelectorAll('.admin-tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
   if (name === 'words') renderWordsTab();
+
+  // Запоминаем вкладку в адресе (#words), чтобы она не сбрасывалась при обновлении страницы
+  try {
+    window.history.replaceState(null, '', name === 'words' ? '#words' : window.location.pathname + window.location.search);
+  } catch (e) { /* не критично */ }
 }
 
-document.querySelectorAll('.admin-tab').forEach((btn) => {
-  btn.addEventListener('click', () => showTab(btn.dataset.tab));
+// Один обработчик на всю панель вкладок: нажатие на кнопку или на её содержимое
+document.querySelector('.admin-tabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('.admin-tab');
+  if (btn) showTab(btn.dataset.tab);
 });
 
 // Подставляет пиньинь (локально) и перевод (из интернета) по иероглифам
@@ -768,4 +779,6 @@ el.logoutBtn.addEventListener('click', async () => {
 
   await loadExtraWords();
   loadUsers();
+  el.buildTag.textContent = 'версия ' + ADMIN_BUILD;
+  showTab(window.location.hash === '#words' ? 'words' : 'students');
 })();
