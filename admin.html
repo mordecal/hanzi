@@ -26,7 +26,12 @@
     </div>
   </div>
 
-  <div class="card admin-card">
+  <div class="admin-tabs">
+    <button type="button" class="admin-tab active" data-tab="students">Ученики</button>
+    <button type="button" class="admin-tab" data-tab="words">Слова</button>
+  </div>
+
+  <div class="card admin-card" id="tabStudents">
     <h1 class="admin-title">Пользователи</h1>
     <div id="usersTableWrap">
       <table class="users-table" id="usersTable">
@@ -46,6 +51,33 @@
       <div class="admin-empty" id="usersEmpty" hidden>Пока нет ни одного пользователя.</div>
     </div>
   </div>
+
+  <div class="card admin-card" id="tabWords" hidden>
+    <h1 class="admin-title">Слова</h1>
+    <p class="picker-hint">Добавьте слово в учебник: оно появится в уроке «Дополнительные слова» у ваших учеников и в списке для подборок. Достаточно ввести иероглифы и нажать «Найти»: пиньинь и перевод подставятся сами, их можно поправить.</p>
+
+    <div class="words-form">
+      <div class="picker-add-row">
+        <input type="text" id="addHanzi" placeholder="Иероглифы, например 你好" maxlength="20" autocomplete="off">
+        <button type="button" class="ghost-btn" id="lookupBtn">Найти</button>
+      </div>
+      <input type="text" id="addPinyin" placeholder="Пиньинь (подставится сам)" maxlength="60" autocomplete="off">
+      <input type="text" id="addTranslation" placeholder="Перевод (подставится сам)" maxlength="100" autocomplete="off">
+      <div class="picker-suggestions" id="addSuggestions" hidden></div>
+      <label class="picker-add-book">Учебник:
+        <select id="addBook"></select>
+      </label>
+      <div class="words-status" id="wordsStatus"></div>
+      <button type="button" class="primary-btn" id="addWordBtn">Добавить в учебник</button>
+    </div>
+
+    <div class="words-list-head">
+      <h2>Добавленные слова <span id="wordsCount"></span></h2>
+      <input type="search" id="wordsSearch" placeholder="Поиск по списку" autocomplete="off">
+    </div>
+    <div id="wordsList"></div>
+    <div class="admin-empty" id="wordsEmpty" hidden></div>
+  </div>
 </div>
 
 <div class="admin-loading" id="adminLoading">Загрузка…</div>
@@ -54,24 +86,8 @@
 <div class="auth-overlay" id="pickerOverlay" hidden>
   <div class="auth-card picker-card">
     <h2 id="pickerTitle">Подборка для пользователя</h2>
-    <p class="picker-hint">Отметьте слова для этого ученика. Если снять все флажки и нажать «Сохранить», у него будет общий список (учебники HSK).</p>
+    <p class="picker-hint">Отметьте слова для этого ученика. Если снять все флажки и нажать «Сохранить», подборки не будет. Нужного слова нет в списке? Добавьте его на вкладке «Слова».</p>
     <input type="search" id="pickerSearch" class="picker-search" placeholder="Поиск: иероглиф, пиньинь или перевод" autocomplete="off">
-    <details class="picker-add" id="pickerAdd">
-      <summary>+ Добавить слово в учебник</summary>
-      <div class="picker-add-fields">
-        <div class="picker-add-row">
-          <input type="text" id="addHanzi" placeholder="Иероглифы, например 你好" maxlength="20" autocomplete="off">
-          <button type="button" class="ghost-btn" id="lookupBtn">Найти</button>
-        </div>
-        <input type="text" id="addPinyin" placeholder="Пиньинь (подставится сам)" maxlength="60" autocomplete="off">
-        <input type="text" id="addTranslation" placeholder="Перевод (подставится сам)" maxlength="100" autocomplete="off">
-        <div class="picker-suggestions" id="addSuggestions" hidden></div>
-        <label class="picker-add-book">Учебник:
-          <select id="addBook"></select>
-        </label>
-        <button type="button" class="ghost-btn" id="addWordBtn">Добавить в учебник</button>
-      </div>
-    </details>
     <div class="picker-list" id="pickerList"></div>
     <div class="picker-no-results" id="pickerNoResults" hidden>Ничего не найдено</div>
     <div class="auth-error" id="pickerError"></div>

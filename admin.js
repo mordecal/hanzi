@@ -23,6 +23,13 @@ const el = {
   addBook: document.getElementById('addBook'),
   inviteCode: document.getElementById('inviteCode'),
   copyInviteBtn: document.getElementById('copyInviteBtn'),
+  tabStudents: document.getElementById('tabStudents'),
+  tabWords: document.getElementById('tabWords'),
+  wordsList: document.getElementById('wordsList'),
+  wordsEmpty: document.getElementById('wordsEmpty'),
+  wordsSearch: document.getElementById('wordsSearch'),
+  wordsCount: document.getElementById('wordsCount'),
+  wordsStatus: document.getElementById('wordsStatus'),
   statsOverlay: document.getElementById('statsOverlay'),
   statsTitle: document.getElementById('statsTitle'),
   statsSummary: document.getElementById('statsSummary'),
@@ -192,184 +199,8 @@ function createPickerRow(word, checked) {
     <span class="picker-pinyin">${escapeHtml(pinyin)}</span>
     <span class="picker-translation">${escapeHtml(word.translation)}</span>
   `;
-  // У слов, добавленных вручную, есть кнопка удаления из учебника
-  if (word.extraId) {
-    const del = document.createElement('button');
-    del.type = 'button';
-    del.className = 'picker-del';
-    del.title = 'Удалить слово из учебника';
-    del.textContent = '✕';
-    del.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      deleteExtraWord(word);
-    });
-    label.appendChild(del);
-  }
   return label;
 }
-
-function currentSelection() {
-  return Array.from(el.pickerList.querySelectorAll('.picker-word-cb:checked')).map(
-    (cb) => pickerWords[Number(cb.value)]
-  );
-}
-
-// Находит слово в выбранном учебнике, отмечает его и прокручивает список к нему
-function selectExistingWord(book, hanzi) {
-  el.pickerSearch.value = '';
-  filterPicker();
-  const row = el.pickerList.querySelector(
-    `.picker-book-group[data-book="${book}"] .picker-item[data-hanzi="${hanzi}"]`
-  );
-  if (!row) return;
-  const cb = row.querySelector('input');
-  if (!cb.checked) {
-    cb.checked = true;
-    cb.dispatchEvent(new Event('change'));
-  }
-  row.scrollIntoView({ block: 'center' });
-}
-
-function clearSuggestions() {
-  el.addSuggestions.innerHTML = '';
-  el.addSuggestions.hidden = true;
-}
-
-// Подставляет пиньинь (локально) и перевод (из интернета) по иероглифам
-async function lookupWord() {
-  const hanzi = el.addHanzi.value.trim();
-  if (!/^[\u4e00-\u9fff]+$/.test(hanzi)) {
-    el.pickerError.textContent = 'В поле «Иероглифы» только китайские символы, без пробелов и знаков.';
-    return;
-  }
-  el.pickerError.textContent = '';
-  clearSuggestions();
-
-  if (window.pinyinPro) {
-    el.addPinyin.value = pinyinPro.pinyin(hanzi, { type: 'array' }).join('');
-  }
-
-  el.lookupBtn.disabled = true;
-  el.lookupBtn.textContent = 'Ищу…';
-  try {
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(hanzi)}&langpair=zh-CN|ru`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (Number(data.responseStatus) !== 200) {
-      throw new Error(data.responseDetails || 'сервис недоступен');
-    }
-
-    const isGood = (s) => s && s !== hanzi && !/[\u4e00-\u9fff]/.test(s) && s.length <= 60;
-    const options = [];
-    const main = ((data.responseData && data.responseData.translatedText) || '').trim();
-    if (isGood(main)) options.push(main);
-    (data.matches || []).forEach((m) => {
-      const t = (m.translation || '').trim();
-      if (isGood(t) && !options.includes(t)) options.push(t);
-    });
-    if (options.length === 0) throw new Error('перевод не найден');
-
-    el.addTranslation.value = options[0];
-
-    // Остальные варианты показываем кнопками: клик подставляет перевод
-    options.slice(1, 5).forEach((opt) => {
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'picker-suggestion';
-      chip.textContent = opt;
-      chip.addEventListener('click', () => (el.addTranslation.value = opt));
-      el.addSuggestions.appendChild(chip);
-    });
-    el.addSuggestions.hidden = el.addSuggestions.children.length === 0;
-  } catch (e) {
-    el.pickerError.textContent = `Перевод не найден автоматически (${e.message}). Впишите его вручную.`;
-  } finally {
-    el.lookupBtn.disabled = false;
-    el.lookupBtn.textContent = 'Найти';
-  }
-}
-
-async function addCustomWord() {
-  const hanzi = el.addHanzi.value.trim();
-  const pinyin = el.addPinyin.value.trim().replace(/\s+/g, ' ');
-  const translation = el.addTranslation.value.trim();
-  const book = el.addBook.value;
-  const bookObj = BOOKS.find((b) => b.id === book);
-  const bookTitle = bookObj ? bookLabel(bookObj) : book;
-
-  if (!/^[\u4e00-\u9fff]+$/.test(hanzi)) {
-    el.pickerError.textContent = 'В поле «Иероглифы» только китайские символы, без пробелов и знаков.';
-    return;
-  }
-  // Поля пустые — сначала подставляем данные, чтобы их можно было проверить
-  if (!pinyin || !translation) {
-    lookupWord();
-    return;
-  }
-
-  // Слово уже есть в этом учебнике — просто отмечаем его
-  const exists = LESSONS.some(
-    (l) => (l.book || 'hsk1') === book && l.words.some((w) => w.hanzi === hanzi)
-  );
-  if (exists) {
-    selectExistingWord(book, hanzi);
-    el.pickerError.textContent = `Слово ${hanzi} уже есть в ${bookTitle}, оно отмечено.`;
-    return;
-  }
-
-  el.addWordBtn.disabled = true;
-  const { error } = await sb.from('extra_words').insert({ book, hanzi, pinyin, translation });
-  el.addWordBtn.disabled = false;
-  if (error) {
-    el.pickerError.textContent = 'Не удалось сохранить слово: ' + error.message;
-    return;
-  }
-
-  // Перечитываем учебники и перерисовываем список, сохранив выбор
-  const selected = currentSelection();
-  await loadExtraWords();
-  selected.push({ hanzi, pinyin: [pinyin], translation });
-  renderPicker(selected);
-  selectExistingWord(book, hanzi);
-
-  el.addHanzi.value = '';
-  el.addPinyin.value = '';
-  el.addTranslation.value = '';
-  clearSuggestions();
-  el.pickerError.textContent = `Слово добавлено в ${bookTitle} («Дополнительные слова») и отмечено в подборке.`;
-}
-
-async function deleteExtraWord(word) {
-  if (!confirm(`Удалить слово «${word.hanzi}» из учебника? Оно пропадёт у всех ваших учеников. В уже сохранённых подборках оно останется.`)) return;
-
-  const { error } = await sb.from('extra_words').delete().eq('id', word.extraId);
-  if (error) {
-    el.pickerError.textContent = 'Не удалось удалить: ' + error.message;
-    return;
-  }
-  const selected = currentSelection().filter((w) => w.extraId !== word.extraId);
-  await loadExtraWords();
-  renderPicker(selected);
-  el.pickerError.textContent = '';
-}
-
-el.addWordBtn.addEventListener('click', addCustomWord);
-el.lookupBtn.addEventListener('click', lookupWord);
-el.addHanzi.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    lookupWord();
-  }
-});
-[el.addPinyin, el.addTranslation].forEach((input) =>
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addCustomWord();
-    }
-  })
-);
 
 function renderPicker(selectedWords) {
   el.pickerList.innerHTML = '';
@@ -454,10 +285,6 @@ function openPicker(userId, userEmail, existingWords) {
   el.pickerTitle.textContent = `Подборка для ${userEmail}`;
   el.pickerError.textContent = '';
   el.pickerSearch.value = '';
-  el.addHanzi.value = '';
-  el.addPinyin.value = '';
-  el.addTranslation.value = '';
-  clearSuggestions();
 
   renderPicker(existingWords || []);
   el.pickerOverlay.hidden = false;
@@ -508,6 +335,217 @@ el.pickerResetBtn.addEventListener('click', () => {
   el.pickerList.querySelectorAll('input[type=checkbox]').forEach((cb) => (cb.checked = false));
   el.pickerError.textContent = '';
 });
+
+// ============================================================
+// Вкладка «Слова»: добавление слов в учебники и список добавленных
+// ============================================================
+
+function setWordsStatus(text, ok = false) {
+  el.wordsStatus.textContent = text;
+  el.wordsStatus.className = 'words-status' + (ok ? ' ok' : '');
+}
+
+function clearSuggestions() {
+  el.addSuggestions.innerHTML = '';
+  el.addSuggestions.hidden = true;
+}
+
+function showTab(name) {
+  el.tabStudents.hidden = name !== 'students';
+  el.tabWords.hidden = name !== 'words';
+  document.querySelectorAll('.admin-tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+  if (name === 'words') renderWordsTab();
+}
+
+document.querySelectorAll('.admin-tab').forEach((btn) => {
+  btn.addEventListener('click', () => showTab(btn.dataset.tab));
+});
+
+// Подставляет пиньинь (локально) и перевод (из интернета) по иероглифам
+async function lookupWord() {
+  const hanzi = el.addHanzi.value.trim();
+  if (!/^[\u4e00-\u9fff]+$/.test(hanzi)) {
+    setWordsStatus('В поле «Иероглифы» только китайские символы, без пробелов и знаков.');
+    return;
+  }
+  setWordsStatus('');
+  clearSuggestions();
+
+  if (window.pinyinPro) {
+    el.addPinyin.value = pinyinPro.pinyin(hanzi, { type: 'array' }).join('');
+  }
+
+  el.lookupBtn.disabled = true;
+  el.lookupBtn.textContent = 'Ищу…';
+  try {
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(hanzi)}&langpair=zh-CN|ru`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (Number(data.responseStatus) !== 200) {
+      throw new Error(data.responseDetails || 'сервис недоступен');
+    }
+
+    const isGood = (s) => s && s !== hanzi && !/[\u4e00-\u9fff]/.test(s) && s.length <= 60;
+    const options = [];
+    const main = ((data.responseData && data.responseData.translatedText) || '').trim();
+    if (isGood(main)) options.push(main);
+    (data.matches || []).forEach((m) => {
+      const t = (m.translation || '').trim();
+      if (isGood(t) && !options.includes(t)) options.push(t);
+    });
+    if (options.length === 0) throw new Error('перевод не найден');
+
+    el.addTranslation.value = options[0];
+
+    // Остальные варианты показываем кнопками: клик подставляет перевод
+    options.slice(1, 5).forEach((opt) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'picker-suggestion';
+      chip.textContent = opt;
+      chip.addEventListener('click', () => (el.addTranslation.value = opt));
+      el.addSuggestions.appendChild(chip);
+    });
+    el.addSuggestions.hidden = el.addSuggestions.children.length === 0;
+  } catch (e) {
+    setWordsStatus(`Перевод не найден автоматически (${e.message}). Впишите его вручную.`);
+  } finally {
+    el.lookupBtn.disabled = false;
+    el.lookupBtn.textContent = 'Найти';
+  }
+}
+
+async function addCustomWord() {
+  const hanzi = el.addHanzi.value.trim();
+  const pinyin = el.addPinyin.value.trim().replace(/\s+/g, ' ');
+  const translation = el.addTranslation.value.trim();
+  const book = el.addBook.value;
+  const bookObj = BOOKS.find((b) => b.id === book);
+  const bookTitle = bookObj ? bookLabel(bookObj) : book;
+
+  if (!/^[\u4e00-\u9fff]+$/.test(hanzi)) {
+    setWordsStatus('В поле «Иероглифы» только китайские символы, без пробелов и знаков.');
+    return;
+  }
+  // Поля пустые — сначала подставляем данные, чтобы их можно было проверить
+  if (!pinyin || !translation) {
+    lookupWord();
+    return;
+  }
+
+  // Слово уже есть в этом учебнике
+  const exists = LESSONS.some(
+    (l) => (l.book || 'hsk1') === book && l.words.some((w) => w.hanzi === hanzi)
+  );
+  if (exists) {
+    setWordsStatus(`Слово ${hanzi} уже есть в ${bookTitle}.`);
+    return;
+  }
+
+  el.addWordBtn.disabled = true;
+  const { error } = await sb.from('extra_words').insert({ book, hanzi, pinyin, translation });
+  el.addWordBtn.disabled = false;
+  if (error) {
+    setWordsStatus('Не удалось сохранить слово: ' + error.message);
+    return;
+  }
+
+  await loadExtraWords();
+  renderWordsTab();
+
+  el.addHanzi.value = '';
+  el.addPinyin.value = '';
+  el.addTranslation.value = '';
+  clearSuggestions();
+  setWordsStatus(`Слово ${hanzi} добавлено в ${bookTitle} («Дополнительные слова»).`, true);
+  el.addHanzi.focus();
+}
+
+async function deleteExtraWord(word) {
+  if (!confirm(`Удалить слово «${word.hanzi}» из учебника? Оно пропадёт у всех ваших учеников. В уже сохранённых подборках оно останется.`)) return;
+
+  const { error } = await sb.from('extra_words').delete().eq('id', word.extraId);
+  if (error) {
+    setWordsStatus('Не удалось удалить: ' + error.message);
+    return;
+  }
+  await loadExtraWords();
+  renderWordsTab();
+  setWordsStatus(`Слово ${word.hanzi} удалено.`, true);
+}
+
+// Список добавленных слов по учебникам, новые сверху
+function renderWordsTab() {
+  const q = el.wordsSearch.value.trim().toLowerCase();
+  const extraLessons = LESSONS.filter((l) => l.extra);
+  const totalAll = extraLessons.reduce((n, l) => n + l.words.length, 0);
+
+  el.wordsList.innerHTML = '';
+  let shown = 0;
+
+  extraLessons.forEach((lesson) => {
+    const words = lesson.words
+      .filter((w) => !q || `${w.hanzi} ${w.pinyin.join(' ')} ${w.translation}`.toLowerCase().includes(q))
+      .reverse();
+    if (words.length === 0) return;
+    shown += words.length;
+
+    const book = BOOKS.find((b) => b.id === lesson.book);
+    const head = document.createElement('div');
+    head.className = 'words-book';
+    head.textContent = `${book ? bookLabel(book) : lesson.book} · ${words.length}`;
+    el.wordsList.appendChild(head);
+
+    words.forEach((w) => {
+      const row = document.createElement('div');
+      row.className = 'words-row';
+
+      const hanzi = document.createElement('span');
+      hanzi.className = 'words-hanzi';
+      hanzi.textContent = w.hanzi;
+      const pinyin = document.createElement('span');
+      pinyin.className = 'words-pinyin';
+      pinyin.textContent = w.pinyin.join(' ');
+      const tr = document.createElement('span');
+      tr.className = 'words-translation';
+      tr.textContent = w.translation;
+
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'picker-del';
+      del.title = 'Удалить слово из учебника';
+      del.textContent = '✕';
+      del.addEventListener('click', () => deleteExtraWord(w));
+
+      row.append(hanzi, pinyin, tr, del);
+      el.wordsList.appendChild(row);
+    });
+  });
+
+  el.wordsCount.textContent = totalAll ? `(${totalAll})` : '';
+  el.wordsEmpty.hidden = shown > 0;
+  el.wordsEmpty.textContent = totalAll
+    ? 'Ничего не найдено'
+    : 'Вы ещё не добавляли слов. Добавьте первое в форме выше.';
+}
+
+el.wordsSearch.addEventListener('input', renderWordsTab);
+el.addWordBtn.addEventListener('click', addCustomWord);
+el.lookupBtn.addEventListener('click', lookupWord);
+el.addHanzi.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    lookupWord();
+  }
+});
+[el.addPinyin, el.addTranslation].forEach((input) =>
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addCustomWord();
+    }
+  })
+);
 
 // ============================================================
 // Подробная статистика по ученику

@@ -921,3 +921,87 @@ body{
 /* Списки внутри окон подстраиваются под высоту экрана */
 .picker-list{max-height:min(320px, 38vh);}
 .stats-list{max-height:min(340px, 42vh);}
+
+/* ===================== Вкладки админ-панели ===================== */
+.admin-tabs{display:flex;gap:8px;justify-content:center;margin-bottom:16px;}
+.admin-tab{
+  font-family:'Manrope', system-ui, sans-serif;
+  font-size:13px;
+  font-weight:600;
+  padding:9px 22px;
+  border-radius:999px;
+  border:1px solid var(--ink-faint);
+  background:transparent;
+  color:var(--ink-soft);
+  cursor:pointer;
+  transition:all .15s ease;
+}
+.admin-tab:hover{border-color:var(--ink);color:var(--ink);}
+.admin-tab.active{background:var(--ink);border-color:var(--ink);color:var(--paper-deep);}
+
+/* Форма добавления слова (вкладка «Слова») */
+.words-form{display:flex;flex-direction:column;gap:10px;max-width:520px;margin-bottom:28px;}
+.words-form input,
+.words-list-head input{
+  font-family:'Noto Serif', serif;
+  font-size:15px;
+  padding:11px 13px;
+  border:1px solid var(--ink-faint);
+  border-radius:5px;
+  background:var(--paper-deep);
+  color:var(--ink);
+  width:100%;
+}
+.words-form input:focus-visible,
+.words-list-head input:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
+.words-form .picker-add-row input{flex:1;min-width:0;width:auto;}
+.words-form .primary-btn{align-self:flex-start;}
+.words-status{
+  font-family:'JetBrains Mono', monospace;
+  font-size:11px;
+  line-height:1.5;
+  color:var(--seal-dark);
+  min-height:16px;
+}
+.words-status.ok{color:var(--success);}
+
+/* Список добавленных слов */
+.words-list-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:6px;
+}
+.words-list-head h2{font-family:'Noto Serif SC', serif;font-size:17px;margin:0;}
+.words-list-head h2 span{color:var(--ink-faint);font-weight:400;font-size:14px;}
+.words-list-head input{width:240px;max-width:100%;}
+.words-book{
+  margin-top:14px;
+  padding:8px 0;
+  font-family:'JetBrains Mono', monospace;
+  font-size:11px;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  border-bottom:1px solid rgba(22,24,29,.15);
+}
+.words-row{
+  display:grid;
+  grid-template-columns:96px 140px 1fr auto;
+  align-items:center;
+  gap:10px;
+  padding:8px 4px;
+  border-bottom:1px solid rgba(22,24,29,.08);
+  font-size:13px;
+}
+.words-hanzi{font-family:'Noto Serif SC', serif;font-size:18px;white-space:nowrap;}
+.words-pinyin{color:var(--ink-soft);}
+.words-translation{color:var(--ink-faint);font-style:italic;}
+@media (max-width:480px){
+  .words-row{grid-template-columns:70px 1fr auto;}
+  .words-pinyin{grid-column:2;}
+  .words-translation{grid-column:2;}
+  .words-row .picker-del{grid-column:3;grid-row:1 / span 2;}
+}
