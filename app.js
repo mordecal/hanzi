@@ -47,6 +47,7 @@ const el = {
   lessonsTitle: document.getElementById('lessonsTitle'),
   doneBooksBtn: document.getElementById('doneBooksBtn'),
   authTeacherCode: document.getElementById('authTeacherCode'),
+  traceGuide: document.getElementById('traceGuide'),
 };
 
 // Активный список слов: подставляется либо частью урока, либо (если админ
@@ -85,6 +86,96 @@ const WRITER_OPTS = {
   drawingColor: '#16181D',
   highlightColor: '#6B7A99',
 };
+
+// ===================== Первая попытка: обводка как в Duolingo =====================
+// На первой попытке для текущего штриха показываем пунктирную линию и кружок со
+// стрелкой в начале. Данные (медианы штрихов) берём из тех же данных, что и HanziWriter.
+let charData = null;     // данные текущего иероглифа (медианы штрихов)
+let guideSize = 320;     // размер сетки в пикселях, при котором создан writer
+let charLoadToken = 0;   // защита от «опоздавших» ответов при быстром переходе
+
+// Перевод координат данных иероглифа (1024×1024, ось Y вверх) в пиксели сетки.
+// Формула та же, что у позиционирования HanziWriter.
+function hanziToScreen(pt, size, padding) {
+  const inner = size - 2 * padding;
+  const scale = inner / 1024;
+  const centering = padding + (inner - scale * 1024) / 2;
+  const xOffset = centering;
+  const yOffset = 124 * scale + centering;
+  return [xOffset + pt[0] * scale, size - yOffset - pt[1] * scale];
+}
+
+// Гладкая кривая через точки (Catmull-Rom → кубические Безье)
+function smoothPath(pts) {
+  const f = (n) => n.toFixed(1);
+  if (pts.length < 3) {
+    const last = pts[pts.length - 1];
+    return `M${f(pts[0][0])} ${f(pts[0][1])} L${f(last[0])} ${f(last[1])}`;
+  }
+  let d = `M${f(pts[0][0])} ${f(pts[0][1])}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] || p2;
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += ` C${f(c1[0])} ${f(c1[1])} ${f(c2[0])} ${f(c2[1])} ${f(p2[0])} ${f(p2[1])}`;
+  }
+  return d;
+}
+
+function angleDeg(from, to) {
+  return (Math.atan2(to[1] - from[1], to[0] - from[0]) * 180) / Math.PI;
+}
+
+function clearGuide() {
+  el.traceGuide.innerHTML = '';
+  el.traceGuide.classList.remove('drawing');
+}
+
+// Показывает подсказку для штриха с номером strokeIdx (с нуля)
+function showGuide(strokeIdx) {
+  clearGuide();
+  try {
+    if (!charData || state.attempt !== 1) return;
+    const median = charData.medians && charData.medians[strokeIdx];
+    if (!median || median.length < 2) return;
+
+    const pts = median.map((p) => hanziToScreen(p, guideSize, WRITER_OPTS.padding));
+    const n = pts.length;
+    const start = pts[0];
+    const end = pts[n - 1];
+    const startAngle = angleDeg(start, pts[Math.min(2, n - 1)]);
+    const endAngle = angleDeg(pts[Math.max(n - 3, 0)], end);
+
+    el.traceGuide.setAttribute('viewBox', `0 0 ${guideSize} ${guideSize}`);
+    el.traceGuide.innerHTML = `
+      <path class="trace-line" d="${smoothPath(pts)}"/>
+      <g transform="translate(${end[0].toFixed(1)} ${end[1].toFixed(1)}) rotate(${endAngle.toFixed(1)})">
+        <path class="trace-end" d="M-7 -7 L3 0 L-7 7"/>
+      </g>
+      <g transform="translate(${start[0].toFixed(1)} ${start[1].toFixed(1)})">
+        <g class="trace-start-inner">
+          <circle class="trace-start" r="15"/>
+          <g transform="rotate(${startAngle.toFixed(1)})">
+            <path class="trace-arrow" d="M-6 0 H6 M1.5 -5 L6 0 L1.5 5"/>
+          </g>
+        </g>
+      </g>`;
+  } catch (e) {
+    console.error('Не удалось показать подсказку:', e);
+    clearGuide();
+  }
+}
+
+// Пока палец на сетке, кружок уменьшается, а пунктир бледнеет (как в Duolingo)
+el.gridWrap.addEventListener('pointerdown', () => {
+  if (el.traceGuide.firstChild) el.traceGuide.classList.add('drawing');
+});
+['pointerup', 'pointercancel'].forEach((type) =>
+  window.addEventListener(type, () => el.traceGuide.classList.remove('drawing'))
+);
 
 function renderSegments(index) {
   el.progressSegments.innerHTML = '';
@@ -147,6 +238,17 @@ function loadChar(charIndex) {
   const size = el.gridWrap.clientWidth || 320;
   writer = HanziWriter.create(el.target, char, { ...WRITER_OPTS, width: size, height: size });
 
+  // Данные штрихов для подсказки первой попытки
+  clearGuide();
+  charData = null;
+  guideSize = size;
+  const token = ++charLoadToken;
+  HanziWriter.loadCharacterData(char)
+    .then((data) => {
+      if (token === charLoadToken) charData = data;
+    })
+    .catch(() => {});
+
   state.busy = true;
   el.replayBtn.disabled = true;
   writer.animateCharacter({
@@ -163,6 +265,10 @@ function startQuizRound(n) {
   state.mistakes = 0;
   el.mistakesLabel.textContent = '';
   updateAttemptUI(n);
+  el.taskTitle.textContent = n === 1
+    ? `Обведите символ для «${WORDS[state.wordIndex].translation}»`
+    : `Напишите «${WORDS[state.wordIndex].translation}»`;
+  clearGuide();
 
   // showOutline влияет только на первый рендер writer'а, поэтому переключаем
   // видимость контура явными методами, а не через опцию в quiz().
@@ -176,15 +282,24 @@ function startQuizRound(n) {
   // должен остаться только пиньинь, без каких-либо визуальных подсказок.
   el.charsRow.classList.toggle('concealed', n === 3);
 
+  // Первая попытка: толстая линия и подсказка-обводка первого штриха
+  if (n === 1) showGuide(0);
+
   writer.quiz({
+    ...(n === 1 ? { drawingWidth: 14 } : {}),
     onMistake: () => {
       state.mistakes++;
       state.charMistakesTotal++;
       el.mistakesLabel.textContent = `Ошибки в этой попытке: ${state.mistakes}`;
       flashGrid('mistake');
     },
-    onCorrectStroke: () => {},
+    onCorrectStroke: ({ strokeNum, strokesRemaining }) => {
+      if (state.attempt !== 1) return;
+      if (strokesRemaining > 0) showGuide(strokeNum + 1);
+      else clearGuide();
+    },
     onComplete: () => {
+      clearGuide();
       flashGrid('success');
       if (state.attempt < 3) {
         setTimeout(() => startQuizRound(state.attempt + 1), 650);
@@ -253,6 +368,7 @@ el.replayBtn.addEventListener('click', () => {
   if (!writer || state.busy) return;
   state.busy = true;
   el.replayBtn.disabled = true;
+  clearGuide();
   const attemptBefore = state.attempt || 1;
   writer.animateCharacter({
     onComplete: () => {
