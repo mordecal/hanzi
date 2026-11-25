@@ -1039,13 +1039,13 @@ body{
 }
 .trace-end{
   fill:none;
-  stroke:#FF2400;
+  stroke:#FFFFF0;
   stroke-width:3.4;
   stroke-linecap:round;
   stroke-linejoin:round;
   transition:opacity .15s ease;
 }
-.trace-start{fill:#FF8C00;}
+.trace-start{fill:#FFFFF0;}
 .trace-arrow{
   fill:none;
   stroke:#fff;
