@@ -1031,7 +1031,7 @@ body{
 }
 .trace-line{
   fill:none;
-  stroke:#FF8C00;
+  stroke:#FFFFF0;
   stroke-width:3.4;
   stroke-linecap:round;
   stroke-dasharray:6 8;
@@ -1039,7 +1039,7 @@ body{
 }
 .trace-end{
   fill:none;
-  stroke:#FF8C00;
+  stroke:#FF2400;
   stroke-width:3.4;
   stroke-linecap:round;
   stroke-linejoin:round;
