@@ -1031,7 +1031,7 @@ body{
 }
 .trace-line{
   fill:none;
-  stroke:#FFFFF0;
+  stroke:#2F8FD8;
   stroke-width:3.4;
   stroke-linecap:round;
   stroke-dasharray:6 8;
@@ -1039,21 +1039,20 @@ body{
 }
 .trace-end{
   fill:none;
-  stroke:#FFFFF0;
+  stroke:#2F8FD8;
   stroke-width:3.4;
   stroke-linecap:round;
   stroke-linejoin:round;
   transition:opacity .15s ease;
 }
-.trace-start{fill:#FFFFF0;}
 .trace-arrow{
   fill:none;
-  stroke:#BD3039;
-  stroke-width:2.6;
+  stroke:#2F8FD8;
+  stroke-width:4;
   stroke-linecap:round;
   stroke-linejoin:round;
+  transition:opacity .15s ease;
 }
-.trace-start-inner{transition:transform .15s ease;}
-.trace-guide.drawing .trace-start-inner{transform:scale(.38);}
 .trace-guide.drawing .trace-line,
-.trace-guide.drawing .trace-end{opacity:.3;}
+.trace-guide.drawing .trace-end,
+.trace-guide.drawing .trace-arrow{opacity:.3;}

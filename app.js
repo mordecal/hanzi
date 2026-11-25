@@ -155,13 +155,8 @@ function showGuide(strokeIdx) {
       <g transform="translate(${end[0].toFixed(1)} ${end[1].toFixed(1)}) rotate(${endAngle.toFixed(1)})">
         <path class="trace-end" d="M-7 -7 L3 0 L-7 7"/>
       </g>
-      <g transform="translate(${start[0].toFixed(1)} ${start[1].toFixed(1)})">
-        <g class="trace-start-inner">
-          <circle class="trace-start" r="15"/>
-          <g transform="rotate(${startAngle.toFixed(1)})">
-            <path class="trace-arrow" d="M-6 0 H6 M1.5 -5 L6 0 L1.5 5"/>
-          </g>
-        </g>
+      <g transform="translate(${start[0].toFixed(1)} ${start[1].toFixed(1)}) rotate(${startAngle.toFixed(1)})">
+        <path class="trace-arrow" d="M0 0 H18 M10 -8 L18 0 L10 8"/>
       </g>`;
   } catch (e) {
     console.error('Не удалось показать подсказку:', e);
@@ -169,7 +164,7 @@ function showGuide(strokeIdx) {
   }
 }
 
-// Пока палец на сетке, кружок уменьшается, а пунктир бледнеет (как в Duolingo)
+// Пока палец на сетке, стрелка и пунктир бледнеют (как в Duolingo)
 el.gridWrap.addEventListener('pointerdown', () => {
   if (el.traceGuide.firstChild) el.traceGuide.classList.add('drawing');
 });
