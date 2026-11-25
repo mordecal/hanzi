@@ -1032,7 +1032,7 @@ body{
 .trace-line{
   fill:none;
   stroke:#FFFFF0;
-  stroke-width:3.4;
+  stroke-width:14;
   stroke-linecap:round;
   stroke-dasharray:6 8;
   transition:opacity .15s ease;
@@ -1048,7 +1048,7 @@ body{
 .trace-start{fill:#FFFFF0;}
 .trace-arrow{
   fill:none;
-  stroke:#fff;
+  stroke:#000;
   stroke-width:2.6;
   stroke-linecap:round;
   stroke-linejoin:round;
