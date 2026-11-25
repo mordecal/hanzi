@@ -1045,7 +1045,7 @@ body{
   stroke-linejoin:round;
   transition:opacity .15s ease;
 }
-.trace-start{fill:#2F8FD8;}
+.trace-start{fill:#FF8C00;}
 .trace-arrow{
   fill:none;
   stroke:#fff;
